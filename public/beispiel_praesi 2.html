@@ -1,0 +1,1389 @@
+<!doctype html>
+<html lang="de" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Methodik der Prototypentwicklung – Nutzerzentriert & Klar</title>
+    <!-- Google Fonts: Inter für UI, Playfair Display für Editorial-Vibe, JetBrains Mono für Daten -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+              serif: ['Playfair Display', 'Georgia', 'serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            colors: {
+              editorial: {
+                cream: '#F9F8F6',
+                charcoal: '#1A1A1A',
+                border: '#E5E2DD',
+                accent: '#D97706',
+                greenbg: '#D1FAE5',
+                greentext: '#065F46',
+                lightGrey: '#F3F4F6'
+              }
+            },
+            animation: {
+              'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      html {
+        scroll-behavior: smooth;
+      }
+      /* Custom shadow styling matching editorial contrast */
+      .editorial-shadow {
+        box-shadow: 4px 4px 0px 0px #1A1A1A;
+      }
+      .editorial-shadow-sm {
+        box-shadow: 2px 2px 0px 0px #1A1A1A;
+      }
+      .premium-shadow {
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05),  0 2px 8px -1px rgba(0, 0, 0, 0.02);
+      }
+      .glowing-border-orange {
+        box-shadow: 0 0 15px rgba(217, 119, 6, 0.4);
+      }
+      /* Custom scrollbar to keep layout premium */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #F9F8F6;
+        border-radius: 0px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #1A1A1A;
+        border-radius: 0px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #444444;
+      }
+      /* Annotation Float Animation */
+      @keyframes float-hint {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-5px); }
+      }
+      .animate-float-hint {
+        animation: float-hint 3s ease-in-out infinite;
+      }
+      /* Sliding in animation for newly injected rows */
+      @keyframes slide-in {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .animate-slide-in {
+        animation: slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+    </style>
+  </head>
+  <body class="bg-[#F9F8F6] text-[#1A1A1A] font-sans min-h-screen selection:bg-[#E5E2DD] antialiased">
+
+    <!-- HEADER / NAVIGATION --->
+    <header class="sticky top-0 z-50 bg-[#F9F8F6]/90 backdrop-blur-md border-b-2 border-[#1A1A1A] px-6 py-6 transition-all">
+      <div class="max-w-7xl mx-auto flex justify-between items-baseline">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <div class="px-2 py-0.5 bg-[#1A1A1A] text-white font-serif italic text-sm font-bold tracking-tighter">
+              P
+            </div>
+            <span class="font-serif italic text-xl font-bold tracking-tight text-[#1A1A1A]">Prototyping neu gedacht.</span>
+          </div>
+          <p class="text-[9px] uppercase tracking-widest opacity-60 font-mono font-bold">Vom Problemverständnis zur greifbaren Lösung &bull; Ausgabe 2026</p>
+        </div>
+        <div class="flex items-center gap-6">
+          <nav class="hidden md:flex space-x-6 text-[11px] font-bold uppercase tracking-widest text-[#1A1A1A]/85">
+            <a href="#problem" class="hover:underline transition-all">Das Problem</a>
+            <a href="#ansatz" class="hover:underline transition-all">Die Philosophie</a>
+            <a href="#persona" class="hover:underline transition-all">Die Persona</a>
+            <a href="#weg" class="hover:underline transition-all">Der Weg</a>
+            <a href="#dashboard" class="px-3 py-1 bg-[#1A1A1A] text-white rounded-none hover:bg-neutral-800 transition-all flex items-center gap-1.5 shadow-[2px_2px_0px_0px_#D97706]">
+              <i data-lucide="play" class="w-3 h-3 text-[#E5E2DD]"></i> VORSCHAU PROTOTYP
+            </a>
+          </nav>
+          <button id="mobileMenuBtn" class="md:hidden text-[#1A1A1A] focus:outline-none" aria-label="Menü öffnen">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Mobile Dropdown Menu -->
+    <div id="mobileMenu" class="hidden md:hidden bg-[#F9F8F6] border-b-2 border-[#1A1A1A] py-6 px-6 space-y-3 absolute top-full left-0 w-full shadow-lg z-50">
+      <a href="#problem" class="block text-xs uppercase tracking-wider font-bold py-1 hover:underline">Das Problem</a>
+      <a href="#ansatz" class="block text-xs uppercase tracking-wider font-bold py-1 hover:underline">Die Philosophie</a>
+      <a href="#persona" class="block text-xs uppercase tracking-wider font-bold py-1 hover:underline">Die Persona</a>
+      <a href="#weg" class="block text-xs uppercase tracking-wider font-bold py-1 hover:underline">Der Weg</a>
+      <a href="#dashboard" class="block text-center text-xs uppercase tracking-widest font-bold py-2.5 bg-[#1A1A1A] text-white shadow-[2px_2px_0px_0px_#D97706] mt-2">INTERAKTIVER PROTOTYP</a>
+    </div>
+
+    <!-- 1. HERO SECTION -->
+    <section class="relative overflow-hidden py-24 px-6 border-b border-[#E5E2DD]">
+      <div class="max-w-4xl mx-auto text-center space-y-8">
+        <div class="inline-flex items-center gap-2 px-3 py-1 bg-white border border-[#E5E2DD] text-xs font-bold uppercase tracking-widest text-[#1A1A1A]">
+          <i data-lucide="compass" class="w-3.5 h-3.5 text-[#D97706]"></i> Methodische Praxis
+        </div>
+        
+        <h1 class="text-5xl sm:text-6xl md:text-7xl font-serif italic font-light tracking-tight text-[#1A1A1A] leading-tight">
+          Prototypentwicklung <br class="hidden sm:inline" />
+          <span class="text-slate-500 font-light">nicht durch Tools, sondern durch</span> Verstehen.
+        </h1>
+        
+        <p class="text-lg md:text-xl text-slate-700 max-w-3xl mx-auto leading-relaxed font-serif italic text-balance">
+          „Viele Digitalprojekte scheitern, weil zu früh Code geschrieben wird. Wir drehen den Spieß um. Unser Ansatz stellt das tiefgreifende Verständnis des Nutzers und das präzise Einkreisen des Problems an erste Stelle – lange bevor wir an künstliche Intelligenz oder Softwarebau denken.“
+        </p>
+
+        <div class="flex flex-col sm:flex-row justify-center items-center gap-4 pt-4">
+          <a href="#dashboard" class="w-full sm:w-auto px-8 py-4 bg-[#1A1A1A] text-white rounded-none font-bold tracking-wider text-xs uppercase hover:bg-neutral-800 shadow-md transition-all text-center flex items-center justify-center gap-2">
+            ZUM SENSOR-PROTOTYP <i data-lucide="arrow-down" class="w-4 h-4 text-[#D97706]"></i>
+          </a>
+          <a href="#ansatz" class="w-full sm:w-auto px-8 py-4 bg-white text-[#1A1A1A] border-2 border-[#1A1A1A] rounded-none font-bold tracking-wider text-xs uppercase hover:bg-slate-50 transition-all text-center">
+            Die Methode erfahren
+          </a>
+        </div>
+        
+        <div class="pt-8 text-[11px] text-[#1A1A1A]/60 font-mono flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+          <span class="flex items-center gap-1"><i data-lucide="shield" class="w-3.5 h-3.5 text-emerald-600"></i> DSGVO-konforme Methodik</span>
+          <span>&bull;</span>
+          <span>Keinerlei Serverkosten</span>
+          <span>&bull;</span>
+          <span>100% anonyme dummy-Daten</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. WHY PROJECTS FAIL -->
+    <section id="problem" class="py-24 px-6 max-w-7xl mx-auto border-b border-[#E5E2DD]">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+        <div class="lg:col-span-4 lg:sticky lg:top-32 space-y-6">
+          <div class="text-[11px] font-bold text-[#D97706] uppercase tracking-widest flex items-center gap-2">
+            <span class="w-2 h-2 bg-[#D97706]"></span> DIE REALITÄTS-ANALYSE
+          </div>
+          <h2 class="text-4xl font-serif italic text-[#1A1A1A] leading-tight">
+            Warum so viele Digitalprojekte scheitern.
+          </h2>
+          <p class="text-slate-700 text-sm leading-relaxed">
+            In der Praxis stürzen sich Teams oft sofort auf das erstbeste Tool oder die neueste KI. Das Ergebnis sind ungenutzte Oberflächen, ratlose Anwender und hohe Kosten ohne realen Nutzen im Arbeitsalltag.
+          </p>
+          <div class="border-t border-[#E5E2DD] pt-4">
+            <span class="text-xs font-mono opacity-50">Fokus: Problemstruktur &gt; Toolauswahl</span>
+          </div>
+        </div>
+        
+        <div class="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Card 1 -->
+          <div class="bg-white p-8 rounded-none border-2 border-[#1A1A1A] editorial-shadow space-y-4 transition-transform hover:-translate-y-1">
+            <div class="w-10 h-10 bg-red-50 border border-red-300 text-red-600 flex items-center justify-center">
+              <i data-lucide="zap-off" class="w-5 h-5"></i>
+            </div>
+            <h3 class="text-xl font-serif font-bold text-[#1A1A1A]">1. Der übereilte Lösungssprung</h3>
+            <p class="text-slate-600 text-xs leading-relaxed">
+              Es wird direkt mit dem Programmieren begonnen, bevor das tatsächliche Problem an der Werkbank oder Produktionslinie überhaupt scharf umrissen ist. Das baut elegante Lösungen für nicht existierende Probleme.
+            </p>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="bg-white p-8 rounded-none border-2 border-[#1A1A1A] editorial-shadow space-y-4 transition-transform hover:-translate-y-1">
+            <div class="w-10 h-10 bg-amber-50 border border-amber-300 text-[#D97706] flex items-center justify-center">
+              <i data-lucide="file-question" class="w-5 h-5"></i>
+            </div>
+            <h3 class="text-xl font-serif font-bold text-[#1A1A1A]">2. Die Pflichtenheft-Falle</h3>
+            <p class="text-slate-600 text-xs leading-relaxed">
+              Monatelange theoretische Dokumente ohne greifbares visuelles Feedback. Am Ende wird aneinander vorbeigeredet, und Korrekturen nach Projektstart belasten Zeitplan und Budget massiv.
+            </p>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="bg-white p-8 rounded-none border-2 border-[#1A1A1A] editorial-shadow space-y-4 transition-transform hover:-translate-y-1 md:col-span-2">
+            <div class="w-10 h-10 bg-indigo-50 border border-indigo-300 text-indigo-600 flex items-center justify-center">
+              <i data-lucide="sparkles" class="w-5 h-5"></i>
+            </div>
+            <h3 class="text-xl font-serif font-bold text-[#1A1A1A]">3. Blinde Technik-Gläubigkeit</h3>
+            <p class="text-slate-600 text-sm leading-relaxed">
+              Es wird fälschlicherweise geglaubt, KI-Modelle könnten strukturierte Designprozesse komplett ersetzen. Doch KI beschleunigt nur das, was wir ihr vorgeben. Wenn wir ihr unverstandene Probleme füttern, baut sie in Rekordzeit nutzlosen Ausschuss.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. FROM PROBLEM TO UNDERSTANDING -->
+    <section id="ansatz" class="py-24 bg-white border-b border-[#E5E2DD] px-6">
+      <div class="max-w-5xl mx-auto space-y-16">
+        <div class="text-center space-y-4">
+          <div class="text-[11px] font-mono tracking-widest text-slate-500 uppercase">UNSERE LEITPHILOSOPHIE</div>
+          <h2 class="text-3xl md:text-5xl font-serif italic text-[#1A1A1A] tracking-tight">
+            Erst verstehen, dann strukturieren – und ganz zuletzt bauen.
+          </h2>
+          <p class="text-slate-600 max-w-2xl mx-auto leading-relaxed text-sm md:text-base font-serif italic">
+            Ein exzellenter Prototyp entsteht aus der Perspektive desjenigen, der ihn am Ende nutzt. Er ist kein Selbstzweck, sondern ein Werkzeug, um Annahmen zu testen und Klarheit zu erzeugen.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="space-y-3 p-6 border-l-4 border-[#1A1A1A] bg-[#F9F8F6]">
+            <div class="text-xs font-mono font-bold text-[#1A1A1A]">SCHRITT 01</div>
+            <h3 class="text-lg font-serif font-bold text-[#1A1A1A]">Problemraum umgrenzen</h3>
+            <p class="text-slate-600 text-xs leading-relaxed">
+              Wir suchen nicht nach tollen Tools, sondern hören den Menschen vor Ort zu. Was sind die täglichen Schmerzpunkte? Wo hakt der Arbeitsablauf wirklich?
+            </p>
+          </div>
+          
+          <div class="space-y-3 p-6 border-l-4 border-[#1A1A1A] bg-[#F9F8F6]">
+            <div class="text-xs font-mono font-bold text-[#1A1A1A]">SCHRITT 02</div>
+            <h3 class="text-lg font-serif font-bold text-[#1A1A1A]">Muster identifizieren</h3>
+            <p class="text-slate-600 text-xs leading-relaxed">
+              Wir vereinfachen Daten und Abläufe so weit, bis das Kernproblem sichtbar wird. Wir weigern uns, Komplexität durch noch mehr technische Ebenen zu verdoppeln.
+            </p>
+          </div>
+
+          <div class="space-y-3 p-6 border-l-4 border-[#1A1A1A] bg-[#F9F8F6]">
+            <div class="text-xs font-mono font-bold text-[#1A1A1A]">SCHRITT 03</div>
+            <h3 class="text-lg font-serif font-bold text-[#1A1A1A]">Echte Empathie verankern</h3>
+            <p class="text-slate-600 text-xs leading-relaxed">
+              Jedes Feature im späteren Prototyp muss sich rechtfertigen: Welchem konkreten Bedürfnis des realen Anwenders dient es in diesem Moment?
+            </p>
+          </div>
+        </div>
+
+        <!-- Editorial Quote Box -->
+        <div class="bg-[#F9F8F6] p-8 border-t-4 border-b-4 border-[#1A1A1A] flex flex-col md:flex-row gap-6 items-center md:items-start text-center md:text-left">
+          <div class="w-12 h-12 bg-[#1A1A1A] text-white flex items-center justify-center flex-shrink-0 font-serif text-3xl italic">
+            “
+          </div>
+          <div class="space-y-2">
+            <p class="text-[#1A1A1A] italic font-serif text-lg leading-relaxed">
+              "Ein Prototyp ist kein unfertiges Produkt. Er ist eine vollendete Antwort auf ein präzise verstandenes Problem."
+            </p>
+            <div class="text-[10px] text-[#D97706] font-mono font-bold uppercase tracking-widest">METHODISCHER LEITSATZ DER PROZESS-INNOVATION</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. PERSONA SECTION -->
+    <section id="persona" class="py-24 px-6 max-w-7xl mx-auto border-b border-[#E5E2DD]">
+      <div class="space-y-16">
+        <div class="max-w-3xl space-y-4">
+          <div class="text-[11px] font-bold text-[#1A1A1A] uppercase tracking-widest flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span> DER MENSCH IM MITTELPUNKT
+          </div>
+          <h2 class="text-4xl md:text-5xl font-serif italic text-[#1A1A1A] tracking-tight">
+            Treffen Sie Robin – Unseren Anker in der realen Welt
+          </h2>
+          <p class="text-slate-700 leading-relaxed font-serif text-lg">
+            „Diese Persona repräsentiert einen typischen Nutzer, für den wir entwerfen. Sie formt die rote Linie, die unsere methodischen Entscheidungen lenkt.“
+          </p>
+        </div>
+
+        <!-- Persona Dashboard Grid Card (Sleek layout) -->
+        <div class="bg-white border-2 border-[#1A1A1A] shadow-lg rounded-none overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+          <!-- Left Column: Avatar & Profile -->
+          <div class="lg:col-span-4 bg-[#1A1A1A] text-white p-8 md:p-12 flex flex-col justify-between">
+            <div class="space-y-6">
+              <div class="w-20 h-20 rounded-none bg-white/10 border border-white/20 flex items-center justify-center">
+                <i data-lucide="user" class="w-10 h-10 text-[#F9F8F6]"></i>
+              </div>
+              <div class="space-y-1">
+                <div class="text-3xl font-serif italic font-light">Robin Müller</div>
+                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Prozessingenieur (Anlagenbetrieb)</div>
+              </div>
+              <div class="border-t border-white/10 my-4"></div>
+              <div class="space-y-3 text-xs font-mono text-slate-300">
+                <div class="flex justify-between">
+                  <span>Alter:</span>
+                  <span class="text-white">38 Jahre</span>
+                </div>
+                <div class="flex justify-between">
+                  <span>Erfahrung:</span>
+                  <span class="text-white">11 Jahre Praxis</span>
+                </div>
+                <div class="flex justify-between">
+                  <span>Arbeitsort:</span>
+                  <span class="text-white">Mittelständische Chemieanlage</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="pt-8 border-t border-white/10">
+              <div class="p-3 bg-white/5 border border-white/10 rounded-none text-xs text-slate-300 italic font-serif">
+                &ldquo;Ich will keine komplexen Datenberge. Ich will wissen, welche Schicht heute läuft und welchen Hebel ich umlegen muss.&rdquo;
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Details grid -->
+          <div class="lg:col-span-8 p-8 md:p-12 bg-white grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+            <!-- Panel 1: Tasks -->
+            <div class="space-y-3">
+              <div class="flex items-center gap-2 text-[#1A1A1A] font-bold">
+                <div class="p-1.5 bg-slate-100 border border-[#E5E2DD]">
+                  <i data-lucide="target" class="w-4 h-4 text-[#D97706]"></i>
+                </div>
+                <span class="text-xs uppercase tracking-wider font-mono">Tägliche Aufgaben</span>
+              </div>
+              <ul class="space-y-3 text-xs text-slate-700 list-disc pl-5 leading-relaxed">
+                <li>Überwachung der Materialdurchläufe im Rohr- und Ventilsystem.</li>
+                <li>Fehlersuche bei spontanen Leistungsabfällen oder Leitungsblockaden.</li>
+                <li>Erstellung von Tagesberichten über ungeplante Stillstände für die Werksleitung.</li>
+              </ul>
+            </div>
+
+            <!-- Panel 2: Pains -->
+            <div class="space-y-3">
+              <div class="flex items-center gap-2 text-red-700 font-bold">
+                <div class="p-1.5 bg-red-50 border border-red-200">
+                  <i data-lucide="alert-circle" class="w-4 h-4"></i>
+                </div>
+                <span class="text-xs uppercase tracking-wider font-mono">Hauptschmerzpunkte</span>
+              </div>
+              <ul class="space-y-3 text-xs text-slate-700 list-disc pl-5 leading-relaxed">
+                <li><strong class="text-[#1A1A1A]">Daten-Chaos:</strong> Er erhält hunderte rohe Fehlerlogs (z.B. <code class="font-mono text-[10px] bg-slate-100 px-1 py-0.5">ERR_VALVE_B3_PR</code>). Die händische Entschlüsselung raubt ihm täglich 90 Minuten.</li>
+                <li><strong class="text-[#1A1A1A]">Kein Beleg:</strong> Er spürt intuitiv, wo die Schwachstellen liegen, kann dies aber gegenüber Vorgesetzten schwer datenbasiert beweisen.</li>
+              </ul>
+            </div>
+
+            <!-- Panel 3: Goals -->
+            <div class="space-y-3">
+              <div class="flex items-center gap-2 text-emerald-700 font-bold">
+                <div class="p-1.5 bg-emerald-50 border border-emerald-200">
+                  <i data-lucide="trending-up" class="w-4 h-4"></i>
+                </div>
+                <span class="text-xs uppercase tracking-wider font-mono">Ambitious Goals</span>
+              </div>
+              <ul class="space-y-3 text-xs text-slate-700 list-disc pl-5 leading-relaxed">
+                <li>Eine einfache, automatisierte Übersetzung kryptischer Fehlermeldungen in klare, verständliche Problemfälle.</li>
+                <li>Ein Dashboard, das er direkt per Tablet zu den morgendlichen Kurzbesprechungen mit an die Linie nehmen kann.</li>
+                <li>Faktenbasierte Priorisierung der dringendsten Wartungen.</li>
+              </ul>
+            </div>
+
+            <!-- Panel 4: Golden Thread to Dashboard -->
+            <div class="space-y-3 bg-[#F9F8F6] p-5 border border-[#E5E2DD] flex flex-col justify-between">
+              <div>
+                <h4 class="text-xs font-bold text-[#1A1A1A] mb-1.5 flex items-center gap-1.5 font-mono uppercase">
+                  <i data-lucide="link" class="w-4 h-4 text-blue-600"></i> Brücke zum Prototyp
+                </h4>
+                <p class="text-xs text-slate-600 leading-relaxed font-serif italic">
+                  Unser unten gezeigter Prototyp ist die direkte Antwort auf Robins Frust: Er verdichtet tausende Fehlerpunkte zu klaren Mustern, berechnet den echten Verlust und lässt Robin sofort fundiert entscheiden.
+                </p>
+              </div>
+              <div class="text-[10px] text-slate-400 font-mono tracking-wider uppercase pt-2">
+                Umfeld: Prozessindustrie (Chem./Pharm.)
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. PREFAQ / PRESS RELEASE -->
+    <section class="py-24 bg-[#1A1A1A] text-white overflow-hidden relative border-b border-[#1A1A1A]">
+      <div class="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none"></div>
+      
+      <div class="max-w-5xl mx-auto px-6 space-y-16 relative">
+        <div class="text-center space-y-4">
+          <div class="text-[11px] font-mono text-slate-400 uppercase tracking-widest">DIE METHODE DER RADIKALEN SCHARFSTELLUNG</div>
+          <h2 class="text-3xl md:text-5xl font-serif italic tracking-tight">
+            Der Amazon-Weg: Die Pressemitteilung der Zukunft
+          </h2>
+          <p class="text-slate-300 max-w-2xl mx-auto text-xs md:text-sm leading-relaxed">
+            Wie sichert man Qualität ab, bevor die erste Codezeile steht? Mit der <span class="text-white font-semibold">Working-Backwards-Methode</span>. Wir verfassen eine fiktive Pressemitteilung, die den Erfolg des fertigen Produkts zum Startzeitpunkt beschreibt.
+          </p>
+        </div>
+
+        <!-- Press Release Document Mockup -->
+        <div class="bg-white text-[#1A1A1A] p-8 md:p-12 rounded-none border-t-8 border-[#1A1A1A] max-w-4xl mx-auto space-y-6 relative shadow-2xl">
+          <!-- Stamp label -->
+          <div class="absolute -top-3 -right-3 md:right-8 bg-[#D97706] text-white text-[10px] font-mono uppercase px-3 py-1 rotate-2 shadow-sm tracking-widest font-bold">
+            Fiktiver Entwurf (Amazon-Stil)
+          </div>
+
+          <div class="flex justify-between items-center border-b border-[#E5E2DD] pb-4 text-[10px] text-slate-400 font-mono">
+            <span>MÜNCHEN / ANLAGENSEKTOR OST</span>
+            <span>VERÖFFENTLICHUNG: SOFORT</span>
+          </div>
+
+          <h3 class="text-2xl md:text-3xl font-serif italic text-slate-900 tracking-tight leading-snug">
+            Neue Klarheit an den Zuleitungen: Prozessingenieure sparen wöchentlich 8 Stunden Analysezeit durch automatisierte Problem-Kompaktierung
+          </h3>
+
+          <p class="text-xs text-slate-500 leading-relaxed font-semibold font-mono uppercase">
+            Neue Assistenz-Technologie überführt chaotische Rohrleitungs-Fehlersignale in strukturierte, textliche Betriebsanweisungen. Betriebsleiter loben die beispiellose Klarheit in der Stehung am Morgen.
+          </p>
+
+          <p class="text-xs md:text-sm text-slate-755 leading-relaxed font-serif">
+            <strong>München, Juni 2027</strong> – Die tägliche Jagd nach dem Grund von Druckabfällen und Ventilverschleiß hat für Prozessingenieure ab heute ein Ende. Mit der Einführung eines neuartigen, intelligenten Diagnose-Interfaces wird die Flut von rohen Sensordaten automatisch gesichtet, geordnet und in menschliche Sprache übersetzt. 
+          </p>
+
+          <p class="text-xs md:text-sm text-slate-755 leading-relaxed font-serif">
+            Bislang verbrachten Ingenieure wie Robin Müller einen beträchtlichen Teil ihrer Arbeitszeit damit, kryptische Fehlercodes manuell in Excel-Tabellen zu übertragen. Das neue Dashboard bündelt diese Alarme sofort in verständliche Störungsmuster mit berechnetem Uptime-Verlust. Werksleiter sprechen bereits nach zwei Wochen Testbetrieb von einer spürbaren Beschleunigung der täglichen Absprachen um über 40 Prozent.
+          </p>
+
+          <div class="p-5 bg-[#F9F8F6] border-l-4 border-[#1A1A1A]">
+            <p class="text-xs text-slate-700 italic font-serif">
+              "Endlich reden wir bei der Besprechung über dieselben Prioritäten. Wir wissen sofort: Das Ventil B3 kostet uns heute 2% Gesamtverfügbarkeit. Kein Raten mehr und kein Zahlen-Rätsel." 
+            </p>
+            <span class="text-[9px] text-[#D97706] font-mono font-bold block mt-1 uppercase">— ROBIN MÜLLER, PROZESSINGENIEUR</span>
+          </div>
+          
+          <div class="text-[10px] text-slate-400 text-center border-t border-[#E5E2DD] pt-4 font-mono">
+            Durch diese fiktive Pressemitteilung wurden vorab alle Features des Dashboards definiert, die Robin wirklich benötigt.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. DEVELOPMENT JOURNEY -->
+    <section id="weg" class="py-24 px-6 max-w-7xl mx-auto border-b border-[#E5E2DD]">
+      <div class="space-y-16">
+        <div class="text-center space-y-4">
+          <div class="text-[11px] font-mono tracking-widest text-[#D97706] uppercase">PROGRESIVER PROZESS</div>
+          <h2 class="text-3xl md:text-5xl font-serif italic text-[#1A1A1A] tracking-tight">
+            Der Weg zum fertigen Prototyp
+          </h2>
+          <p class="text-[#1A1A1A] max-w-2xl mx-auto leading-relaxed text-xs md:text-sm font-serif">
+            KI ist kein Wundermittel, sondern ein mächtiger Gehilfe am Ende des Denkprozesses. So sieht die 3-stufige Reise aus, wie wir Ideen greifbar machen.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <!-- Step 1 -->
+          <div class="bg-white p-8 rounded-none border-2 border-[#1A1A1A] editorial-shadow space-y-4 relative">
+            <div class="absolute -top-4 left-6 px-3 py-1 border-2 border-[#1A1A1A] bg-white text-xs font-bold font-mono">
+              SCHRITT 1
+            </div>
+            <div class="text-slate-400 font-bold text-[10px] uppercase tracking-wider font-mono pt-2">ANALOGER ANFANG</div>
+            <h3 class="text-xl font-serif font-bold text-[#1A1A1A]">Das Whiteboard</h3>
+            <p class="text-slate-600 text-xs leading-relaxed">
+              Wir kleben echte Post-Its an eine Wand mit Robin. Hier herrscht striktes Verbot von Fachjargon und Technologie-Diskussionen. Das einzige Ziel: Den physischen Ablauf und den echten Schmerzpunkt einkreisen operativ.
+            </p>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="bg-white p-8 rounded-none border-2 border-[#1A1A1A] editorial-shadow space-y-4 relative">
+            <div class="absolute -top-4 left-6 px-3 py-1 border-2 border-[#1A1A1A] bg-white text-xs font-bold font-mono">
+              SCHRITT 2
+            </div>
+            <div class="text-slate-400 font-bold text-[10px] uppercase tracking-wider font-mono pt-2">SPRACHLICHE PRÄZISION</div>
+            <h3 class="text-xl font-serif font-bold text-[#1A1A1A]">Das fiktive Release</h3>
+            <p class="text-slate-600 text-xs leading-relaxed">
+              Wir verfassen die fiktive Pressemitteilung (siehe oben). Dadurch sichern wir die Definition der Ziele ab. Erst wenn jeder Beteiligte den geschriebenen Kundennutzen unterschreibt, gehen wir weiter.
+            </p>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="bg-white p-8 rounded-none border-2 border-[#1A1A1A] editorial-shadow space-y-4 relative">
+            <div class="absolute -top-4 left-6 px-3 py-1 border-2 border-[#1A1A1A] bg-white text-xs font-bold font-mono">
+              SCHRITT 3
+            </div>
+            <div class="text-slate-400 font-bold text-[10px] uppercase tracking-wider font-mono pt-2">SCHNELLE SYNTHESE</div>
+            <h3 class="text-xl font-serif font-bold text-[#1A1A1A]">Die KI-Übersetzung</h3>
+            <p class="text-slate-600 text-xs leading-relaxed">
+              Nun kommt KI ins Spiel. Wir füttern das Whiteboard-Konzept und die Textstruktur in hochentwickelte Sprachmodelle ein, um blitzschnell den interaktiven Frontend-Entwurf zu generieren. So sparen wir Monate an Entwicklungszeit.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. MLP / PROTOTYPING VALUES -->
+    <section class="py-20 bg-white border-b border-[#E5E2DD] px-6">
+      <div class="max-w-4xl mx-auto text-center space-y-8">
+        <h2 class="text-3xl md:text-4xl font-serif italic text-slate-900 tracking-tight">
+          Vom MVP (Minimum Viable Product) zum <span class="text-blue-600">MLP (Minimum Lovable Product)</span>
+        </h2>
+        <p class="text-slate-600 leading-relaxed text-xs md:text-sm max-w-2xl mx-auto">
+          Ein klassischer Prototyp ist oft nur funktional (viable), fühlt sich aber an wie ein nackt verdrahtetes Gerüst. Ein <strong class="text-slate-900 font-bold font-serif italic">Minimum Lovable Product</strong> hingegen ist reduziert, aber so liebevoll und flüssig gestaltet, dass Anwender wie Robin ab Sekunde eins echte Freude bei der Nutzung haben. Das sichert die Akzeptanz im Team und macht Potential sichtbar.
+        </p>
+      </div>
+    </section>
+
+    <!-- 8. HIGHLIGHT: DASHBOARD PROTOTYPE (THE MAIN INTERACTIVE EXP) -->
+    <section id="dashboard" class="py-24 bg-[#F9F8F6] border-b border-[#E5E2DD] px-6 relative">
+      <div class="max-w-7xl mx-auto space-y-12">
+        
+        <!-- Header Controls -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-baseline gap-6 pb-6 border-b-2 border-[#1A1A1A]">
+          <div class="space-y-2">
+            <span class="px-2 py-0.5 bg-[#D1FAE5] text-[#065F46] text-[10px] font-mono font-bold uppercase border border-emerald-300">
+              Prototyp – Dummy-Daten
+            </span>
+            <h2 class="text-4xl font-serif italic text-[#1A1A1A] tracking-tight">
+              Anlagen-Diagnose & Uptime-Optimierer
+            </h2>
+            <p class="text-xs text-slate-500 font-mono">
+              Ein interaktiver Entwurf, der direkt auf die Schmerzpunkte von Prozessingenieur Robin Müller zugeschnitten ist.
+            </p>
+          </div>
+
+          <!-- Explanation Toggle Control -->
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
+            <button id="toggleExplanationBtn" class="flex items-center justify-center gap-2 px-5 py-3 border-2 border-[#1A1A1A] bg-white text-[#1A1A1A] font-bold text-xs uppercase tracking-wider hover:bg-slate-50 transition-all shadow-sm">
+              <i data-lucide="help-circle" class="w-4 h-4 text-[#D97706]"></i>
+              <span id="explanationText">Erklärungsmodus einschalten</span>
+            </button>
+            <button id="resetSimulationBtn" class="flex items-center justify-center gap-1.5 px-4 py-3 border border-[#E5E2DD] bg-white text-slate-600 hover:text-red-500 hover:bg-slate-50 transition-all text-[11px] font-mono font-semibold">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Simulation zurücksetzen
+            </button>
+          </div>
+        </div>
+
+        <!-- Simulated Floating Insights Overlay Alert (if explanation mode is active) -->
+        <div id="explanationOverlayAlert" class="hidden bg-[#D97706]/10 border-2 border-[#D97706] p-6 space-y-2">
+          <div class="flex items-center gap-2 text-[#D97706] font-bold text-xs uppercase tracking-widest font-mono">
+            <i data-lucide="info" class="w-5 h-5 text-[#D97706]"></i> Erklärungs-Modus Aktiv
+          </div>
+          <p class="text-xs md:text-sm text-slate-800 leading-relaxed font-serif italic">
+            In diesem Modus zeigen wir Ihnen mit <span class="bg-amber-200/50 px-1 py-0.5 rounded font-mono font-bold">gelben Hinweisboxen</span>, warum bestimmte Design-Entscheidungen im Prototyp getroffen wurden. Sie sehen direkt die methodische Gedankenarbeit hinter der Oberfläche, die Robins tägliche Aufgaben stützt.
+          </p>
+        </div>
+
+        <!-- THE MAIN EDITORIAL PROTOTYPE INTERACTIVE CONTAINER -->
+        <div class="bg-white border-2 border-[#1A1A1A] text-[#1A1A1A] p-6 md:p-8 shadow-xl relative transition-all duration-300">
+          
+          <!-- Top Accent Divider -->
+          <div class="absolute top-0 left-0 w-full h-[6px] bg-[#1A1A1A]"></div>
+
+          <!-- Dashboard Top Header Bar -->
+          <div class="flex flex-wrap justify-between items-center gap-4 pb-6 border-b border-[#E5E2DD] text-xs font-mono">
+            <div class="flex items-center gap-2">
+              <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span class="font-bold tracking-wider text-[#1A1A1A] uppercase">ANLAGENSEKTOR B - TELEMETRIE STREAM</span>
+            </div>
+            <div class="flex items-center gap-3 text-slate-500">
+              <span>Muster-ID: <strong class="text-slate-900 font-bold">ROT-2026</strong></span>
+              <span>|</span>
+              <span>Verantwortlich: <strong class="text-slate-900 font-bold">R. Müller</strong></span>
+            </div>
+          </div>
+
+          <!-- PRIMARY KPIs ROW (3-Col Grid) -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 py-8 relative">
+            
+            <!-- KPI 1 -->
+            <div id="kpiCardUptime" class="bg-[#F9F8F6] p-6 border border-[#E5E2DD] transition-all duration-500 relative">
+              <!-- Explanatory Tooltip overlay (Hidden by default) -->
+              <div class="explanation-hint hidden absolute -top-10 left-4 right-4 bg-[#D97706] text-white text-[11px] font-mono p-2.5 shadow-xl animate-float-hint z-20 font-bold">
+                💡 <strong>Robins Beleg vor Chefs:</strong> In 2 Sekunden die Produktivität belegen, ganz ohne manuelles Daten-Schaufeln.
+              </div>
+              <div class="flex justify-between items-start font-mono">
+                <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Gesamteffizienz (OEE)</span>
+                <span class="px-1.5 py-0.5 bg-emerald-100 text-[#065F46] text-[9px] font-bold">+1.2% Trend</span>
+              </div>
+              <div class="mt-4 flex items-baseline gap-2">
+                <span id="kpiUptimeValue" class="text-4xl font-serif italic font-extrabold text-[#1A1A1A] tracking-tight transition-all duration-500">92.4 %</span>
+                <span class="text-xs text-slate-400 font-mono">Soll: 95.0%</span>
+              </div>
+              <div class="w-full bg-[#E5E2DD] h-1.5 mt-4 overflow-hidden">
+                <div id="kpiUptimeProgressBar" class="bg-[#1A1A1A] h-full transition-all duration-700" style="width: 92.4%;"></div>
+              </div>
+            </div>
+
+            <!-- KPI 2 -->
+            <div id="kpiCardIncidents" class="bg-[#F9F8F6] p-6 border border-[#E5E2DD] transition-all duration-500 relative">
+              <!-- Explanatory Tooltip overlay (Hidden by default) -->
+              <div class="explanation-hint hidden absolute -top-10 left-4 right-4 bg-[#D97706] text-white text-[11px] font-mono p-2.5 shadow-xl animate-float-hint z-20 font-bold">
+                💡 <strong>Zeitspar-Innovation:</strong> Statt 1.000 Einzelfehler sieht er hier nur die syntetisierten Kern-Ursachen des Tages.
+              </div>
+              <div class="flex justify-between items-start font-mono">
+                <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Muster-Gruppen (Heute)</span>
+                <span class="px-1.5 py-0.5 bg-amber-100 text-[#D97706] text-[9px] font-bold">Automatisch</span>
+              </div>
+              <div class="mt-4 flex items-baseline gap-2">
+                <span id="kpiClusterValue" class="text-4xl font-serif italic font-extrabold text-[#D97706] tracking-tight transition-all duration-500">3</span>
+                <span class="text-xs text-slate-400 font-mono">Fehler-Cluster</span>
+              </div>
+              <p class="text-[10px] text-slate-500 mt-5 flex items-center gap-1 font-mono">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-[#D97706]"></i> Gruppierte Anomalien aktiv
+              </p>
+            </div>
+
+            <!-- KPI 3 -->
+            <div id="kpiCardDowntime" class="bg-[#F9F8F6] p-6 border border-[#E5E2DD] transition-all duration-500 relative">
+              <!-- Explanatory Tooltip overlay (Hidden by default) -->
+              <div class="explanation-hint hidden absolute -top-10 left-4 right-4 bg-[#D97706] text-white text-[11px] font-mono p-2.5 shadow-xl animate-float-hint z-20 font-bold">
+                💡 <strong>Kosten-Indikator:</strong> Jede Sekunde Ausfall kostet. Dieses Signal lenkt Robins Fokus direkt auf den größten Hebel.
+              </div>
+              <div class="flex justify-between items-start font-mono">
+                <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Produktionsausfall</span>
+                <span class="px-1.5 py-0.5 bg-red-150 text-red-600 text-[9px] font-bold">Ausfallzeit</span>
+              </div>
+              <div class="mt-4 flex items-baseline gap-2">
+                <span id="kpiDowntimeValue" class="text-4xl font-serif italic font-extrabold text-red-650 tracking-tight transition-all duration-500">38 Min</span>
+                <span class="text-xs text-slate-400 font-mono">Verlust: ca. 4.560 €</span>
+              </div>
+              <p class="text-[10px] text-slate-500 mt-5 flex items-center gap-1 font-mono">
+                <i data-lucide="clock" class="w-3.5 h-3.5 text-red-600"></i> Event registriert vor 12 Min.
+              </p>
+            </div>
+          </div>
+
+          <!-- TWO COLUMN ANALYSIS LAYOUT -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-4 items-start border-t border-[#E5E2DD]">
+            
+            <!-- LEFT AREA: CLUSTERS AND TRANSLATION (7 Cols) -->
+            <div class="lg:col-span-12 xl:col-span-7 space-y-6 relative">
+              <!-- Explanatory Tooltip overlay (Hidden by default) -->
+              <div class="explanation-hint hidden absolute top-0 -left-4 right-4 bg-[#D97706] text-white text-[11px] font-mono p-3 shadow-2xl animate-float-hint z-20 font-bold">
+                💡 <strong>Niveau der Übersetzung:</strong> Der Algorithmus nimmt das cryptische Leitungs-Signal und entschlüsselt es sofort in verständliches Deutsch.
+              </div>
+              
+              <div class="flex justify-between items-center">
+                <h3 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-700 flex items-center gap-2">
+                  <i data-lucide="layers" class="w-4 h-4 text-[#D97706]"></i> Aktive Störungsmuster an der Linie
+                </h3>
+                <span class="text-[10px] bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-none font-mono">Aktualisierung: Echtzeit</span>
+              </div>
+
+              <!-- LIVE INCIDENTS LIST -->
+              <div id="incidentsContainer" class="space-y-4">
+                
+                <!-- Incident 1 -->
+                <div class="bg-white p-5 border border-[#1A1A1A] space-y-3 relative hover:bg-[#F9F8F6] transition-all" id="incident-1">
+                  <div class="flex justify-between items-start">
+                    <div class="space-y-1">
+                      <div class="flex items-center gap-2">
+                        <span class="font-serif font-bold text-sm text-slate-900">Druckabfall in Rohrabschnitt B3</span>
+                        <span class="px-1.5 py-0.5 bg-red-100 text-red-700 text-[9px] font-mono font-bold">Kritisch</span>
+                      </div>
+                      <div class="text-[10px] text-slate-500 font-mono">Ermitteltes Signal: <span class="text-red-600 font-bold">VALVE_PR_B3_FAIL (14x registriert)</span></div>
+                    </div>
+                    <span class="text-xs font-mono font-bold text-red-600">-24 Min Downtime</span>
+                  </div>
+                  <p class="text-xs text-slate-700 leading-relaxed bg-[#F9F8F6] p-3 rounded-none border border-[#E5E2DD]">
+                    <strong class="text-[#D97706] font-mono flex items-center gap-1 text-[10px] uppercase mb-1">
+                      <i data-lucide="sparkles" class="w-3 h-3"></i> KI-Interpretation für Robin:
+                    </strong>
+                    Regelmäßiger, abrupter Druckabfall nahe Steuerventil B3 gefolgt von instabilem Durchlauf. Sehr hohes Risiko für Verschleiß der Absperrmembran.
+                  </p>
+                  <div class="flex justify-between items-center text-[10px] text-slate-500 pt-1 font-mono">
+                    <span class="flex items-center gap-1"><i data-lucide="wrench" class="w-3.5 h-3.5"></i> Empfehlung: Dichtung im nächsten Halt tauschen</span>
+                    <span class="italic">vor 12 Min.</span>
+                  </div>
+                </div>
+
+                <!-- Incident 2 -->
+                <div class="bg-white p-5 border border-[#E5E2DD] space-y-3 relative hover:bg-[#F9F8F6] transition-all" id="incident-2-sign">
+                  <div class="flex justify-between items-start">
+                    <div class="space-y-1">
+                      <div class="flex items-center gap-2">
+                        <span class="font-serif font-bold text-sm text-slate-900">Sensor-Wert-Schwankungen Kessel A2</span>
+                        <span class="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-mono font-bold">Achtung</span>
+                      </div>
+                      <div class="text-[10px] text-slate-500 font-mono">Ermitteltes Signal: <span class="text-amber-700">TMP_SENS_A2_DRIFT (6x registriert)</span></div>
+                    </div>
+                    <span class="text-xs font-mono font-bold text-[#D97706]">-14 Min Downtime</span>
+                  </div>
+                  <p class="text-xs text-slate-700 leading-relaxed bg-[#F9F8F6] p-3 rounded-none border border-[#E5E2DD]">
+                    <strong class="text-[#D97706] font-mono flex items-center gap-1 text-[10px] uppercase mb-1">
+                      <i data-lucide="sparkles" class="w-3 h-3"></i> KI-Interpretation für Robin:
+                    </strong>
+                    Die Temperatur-Messkette in Kessel A2 schwankt zyklisch im Bereich von ±1.8°C außerhalb der Bandbreite. Wahrscheinlich eine thermische Trägheit durch Belagsbildung an der Messhülse.
+                  </p>
+                  <div class="flex justify-between items-center text-[10px] text-slate-500 pt-1 font-mono">
+                    <span class="flex items-center gap-1"><i data-lucide="info" class="w-3.5 h-3.5"></i> Empfehlung: Kalibrierungsabgleich durchführen</span>
+                    <span class="italic">vor 45 Min.</span>
+                  </div>
+                </div>
+
+                <!-- Incident 3 -->
+                <div class="bg-white p-5 border border-[#E5E2DD] space-y-3 relative hover:bg-[#F9F8F6] transition-all" id="incident-3">
+                  <div class="flex justify-between items-start">
+                    <div class="space-y-1">
+                      <div class="flex items-center gap-2">
+                        <span class="font-serif font-bold text-sm text-slate-900">Kurzzeitige Blockade Förderband 4</span>
+                        <span class="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-mono font-bold">Beobachtung</span>
+                      </div>
+                      <div class="text-[10px] text-slate-500 font-mono">Ermitteltes Signal: <span class="text-slate-500">MOT_SLIP_F4_NOTICE (2x registriert)</span></div>
+                    </div>
+                    <span class="text-xs font-mono font-bold text-slate-600">-2 Min Downtime</span>
+                  </div>
+                  <p class="text-xs text-slate-700 leading-relaxed bg-[#F9F8F6] p-3 rounded-none border border-[#E5E2DD]">
+                    <strong class="text-[#D97706] font-mono flex items-center gap-1 text-[10px] uppercase mb-1">
+                      <i data-lucide="sparkles" class="w-3 h-3"></i> KI-Interpretation für Robin:
+                    </strong>
+                    Kurzfristiger Schlupf an der Antriebstrommel des Hauptförderbands B-Mitte. Material ist verstopfungsfrei weitergeglitten. Keine manuelle Korrektur erforderlich.
+                  </p>
+                  <div class="flex justify-between items-center text-[10px] text-slate-500 pt-1 font-mono">
+                    <span class="flex items-center gap-1"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i> Empfehlung: Keine Reparatur nötig, nur beobachten</span>
+                    <span class="italic">vor 2 Min.</span>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+            <!-- RIGHT AREA: INTERACTIVE SIMULATOR (5 Cols) -->
+            <div class="lg:col-span-12 xl:col-span-5 space-y-6 relative">
+              
+              <!-- Explanatory Tooltip overlay (Hidden by default) -->
+              <div class="explanation-hint hidden absolute top-0 -left-4 right-4 bg-[#D97706] text-white text-[11px] font-mono p-3 shadow-2xl animate-float-hint z-20 font-bold">
+                💡 <strong>Der interaktive Kern:</strong> Wir simulieren hier Maschinen-Vorlagen. Vor dem Programmieren testen wir mit Robin, ob das Modell ihm wirklich den Alltag erleichtert.
+              </div>
+
+              <!-- SIMULATOR CONTROLS -->
+              <div class="bg-[#F9F8F6] p-6 border-2 border-[#1A1A1A] space-y-4">
+                <div class="space-y-1">
+                  <h3 class="text-xs font-mono font-bold text-[#1A1A1A] uppercase tracking-wider flex items-center gap-2">
+                    <i data-lucide="terminal" class="w-4 h-4 text-[#D97706]"></i> Live-Simulator & Problem-Zufuhr
+                  </h3>
+                  <p class="text-xs text-slate-600">
+                    Klicken Sie auf ein Szenario aus der Praxis. Beobachten Sie, wie das Dashboard es live synthethisiert und für das Tool mit Dummy-Daten bündelt:
+                  </p>
+                </div>
+
+                <div class="space-y-3 pt-2">
+                  <!-- Button 1 -->
+                  <button onclick="simulateIncident('valve_leak')" class="w-full text-left p-3 border-2 border-[#1A1A1A] bg-white hover:bg-slate-50 transition-all flex items-center justify-between group">
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 bg-red-100 text-red-700 flex items-center justify-center text-xs font-bold font-mono">
+                        S1
+                      </div>
+                      <div class="space-y-0.5">
+                        <div class="text-xs font-bold text-[#1A1A1A]">Leckagegefahr an Säurepumpe C4</div>
+                        <div class="text-[9px] text-slate-500 font-mono">Log Code: WARN_LEAK_PUMP_C4</div>
+                      </div>
+                    </div>
+                    <i data-lucide="plus" class="w-4 h-4 text-[#1A1A1A] group-hover:translate-x-0.5 transition-transform"></i>
+                  </button>
+
+                  <!-- Button 2 -->
+                  <button onclick="simulateIncident('temp_surge')" class="w-full text-left p-3 border-2 border-[#1A1A1A] bg-white hover:bg-slate-50 transition-all flex items-center justify-between group">
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 bg-amber-100 text-[#D97706] flex items-center justify-center text-xs font-bold font-mono">
+                        S2
+                      </div>
+                      <div class="space-y-0.5">
+                        <div class="text-xs font-bold text-[#1A1A1A]">Temperatursturz Kühlsystem 1</div>
+                        <div class="text-[9px] text-slate-500 font-mono">Log Code: ERR_TEMP_COOLER_LOW</div>
+                      </div>
+                    </div>
+                    <i data-lucide="plus" class="w-4 h-4 text-[#1A1A1A] group-hover:translate-x-0.5 transition-transform"></i>
+                  </button>
+
+                  <!-- Button 3 -->
+                  <button onclick="simulateIncident('belt_jam')" class="w-full text-left p-3 border-2 border-[#1A1A1A] bg-white hover:bg-slate-50 transition-all flex items-center justify-between group">
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold font-mono">
+                        S3
+                      </div>
+                      <div class="space-y-0.5">
+                        <div class="text-xs font-bold text-[#1A1A1A]">Lagerschaden Hauptmischer B2</div>
+                        <div class="text-[9px] text-slate-500 font-mono">Log Code: MOTOR_VIBRATION_FATAL</div>
+                      </div>
+                    </div>
+                    <i data-lucide="plus" class="w-4 h-4 text-[#1A1A1A] group-hover:translate-x-0.5 transition-transform"></i>
+                  </button>
+                </div>
+
+                <!-- Simulation Console Log window -->
+                <div class="border border-[#E5E2DD] overflow-hidden bg-white text-slate-800 text-xs font-mono mt-4">
+                  <div class="bg-slate-100 px-4 py-2 flex justify-between items-center text-[9px] text-slate-500 border-b border-[#E5E2DD]">
+                    <span>ROHER TELEMETRIE-STREAM (DUMMY FEED)</span>
+                    <span id="simulatorStatus" class="flex items-center gap-1 font-bold text-emerald-700">
+                      <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span> BEREIT
+                    </span>
+                  </div>
+                  <div class="p-4 space-y-2 max-h-40 overflow-y-auto text-[11px]" id="simulatorLogConsole">
+                    <div class="text-slate-400">[02:04:50] Simulator initialisiert...</div>
+                    <div class="text-slate-400">[02:04:53] Verbindungsrate Sektor B: Stabil...</div>
+                    <div class="text-emerald-700 font-bold">[02:04:55] Empfange Telemetrie-Stream (Uptime=92.4%)</div>
+                    <div class="text-slate-500 italic">&gt; Klicken Sie oben auf ein Szenario...</div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- ROOT CAUSE PRIORITY LIST -->
+              <div class="bg-white border-2 border-[#1A1A1A] p-6 space-y-4">
+                <h4 class="text-xs font-mono font-bold text-[#1A1A1A] uppercase tracking-widest flex items-center gap-2">
+                  <i data-lucide="bar-chart-2" class="w-4 h-4"></i> Faktischer Verlustanteil (Fokus)
+                </h4>
+                
+                <div class="space-y-4 text-xs font-mono">
+                  <!-- Bar 1 -->
+                  <div class="space-y-1.5">
+                    <div class="flex justify-between text-slate-700">
+                      <span>1. Ventil-System Membranen (B1-B4)</span>
+                      <span class="font-bold text-[#1A1A1A]">54%</span>
+                    </div>
+                    <div class="w-full bg-slate-100 h-3 overflow-hidden border border-[#E5E2DD]">
+                      <div id="paretoBar1" class="bg-[#1A1A1A] h-full transition-all duration-500" style="width: 54%;"></div>
+                    </div>
+                  </div>
+
+                  <!-- Bar 2 -->
+                  <div class="space-y-1.5">
+                    <div class="flex justify-between text-slate-700">
+                      <span>2. Sensorkalibrierung & Drift (A1-A3)</span>
+                      <span class="font-bold text-[#1A1A1A]">28%</span>
+                    </div>
+                    <div class="w-full bg-slate-100 h-3 overflow-hidden border border-[#E5E2DD]">
+                      <div id="paretoBar2" class="bg-slate-500 h-full transition-all duration-500" style="width: 28%;"></div>
+                    </div>
+                  </div>
+
+                  <!-- Bar 3 -->
+                  <div class="space-y-1.5">
+                    <div class="flex justify-between text-slate-700">
+                      <span>3. Mechanisches Lager & Reibung</span>
+                      <span class="font-bold text-[#1A1A1A]">18%</span>
+                    </div>
+                    <div class="w-full bg-slate-100 h-3 overflow-hidden border border-[#E5E2DD]">
+                      <div id="paretoBar3" class="bg-slate-300 h-full transition-all duration-500" style="width: 18%;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- Dynamic recommendation text based on simulation -->
+          <div class="mt-8 p-4 bg-[#F9F8F6] border border-dashed border-[#E5E2DD] text-xs font-serif italic text-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <strong class="font-mono text-[9px] uppercase tracking-widest text-[#D97706] block mb-1">
+                <i data-lucide="sparkles" class="w-3 h-3 inline-block"></i> Automatisierter Instandhaltungs-Vorschlag:
+              </strong>
+              <span id="kiRecommendationText">Aktuell keine kritischen Druck-Massenverluste. Normalbetrieb beobachten.</span>
+            </div>
+            <div class="text-[10px] uppercase font-mono font-bold opacity-60">Fokus: Robin's Entscheidungsvorlage</div>
+          </div>
+
+        </div>
+
+        <!-- Footnote of Dashboard Prototype -->
+        <p class="text-center text-xs text-slate-500 font-mono italic">
+          * Der obige Prototyp verwendet 100% anonymisierte Dummy-Daten und demonstriert die Ergonomie der Benutzerführung für Robin Müller.
+        </p>
+
+      </div>
+    </section>
+
+    <!-- 9. PRIVACY & SECURITY -->
+    <section class="py-24 px-6 max-w-5xl mx-auto border-b border-[#E5E2DD]">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-12 items-center">
+        <div class="md:col-span-6 space-y-6">
+          <div class="text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 font-mono">
+            <i data-lucide="shield" class="w-4 h-4 text-emerald-600"></i> DATENSCHUTZ IM INDUSTRIELLEN DESIGN
+          </div>
+          <h2 class="text-3xl md:text-4xl font-serif italic text-[#1A1A1A] tracking-tight">
+            Sorgsamer Umgang mit sensiblen Fabrikdaten
+          </h2>
+          <p class="text-slate-700 leading-relaxed text-xs md:text-sm">
+            In der Industrie haben Daten einen unschätzbaren Wert und berühren oft sensible Betriebsgeheimnisse. Unser Prototyping-Ansatz respektiert diese Realität von der ersten Sekunde an.
+          </p>
+          <div class="bg-emerald-50 p-4 border border-emerald-200 flex items-start gap-3">
+            <i data-lucide="check" class="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5"></i>
+            <p class="text-xs text-emerald-900 leading-relaxed font-serif">
+              Für diesen Entwurf werden <span class="font-bold">ausschließlich abstrahierte Dummy-Daten</span> verwendet. Es werden keinerlei echte Kundensysteme ausgelesen oder sensible Firmendaten an externe Server übertragen.
+            </p>
+          </div>
+        </div>
+
+        <div class="md:col-span-6 bg-[#F9F8F6] p-8 border-2 border-[#1A1A1A] space-y-6 editorial-shadow">
+          <h3 class="text-lg font-serif font-bold text-[#1A1A1A] flex items-center gap-2 border-b border-[#E5E2DD] pb-3">
+            <i data-lucide="info" class="w-5 h-5"></i> Richtlinien im Prototypholding
+          </h3>
+          
+          <div class="space-y-4 text-xs text-slate-700 font-mono">
+            <div class="flex gap-3">
+              <span class="w-5 h-5 border border-[#1A1A1A] bg-white text-[#1A1A1A] flex items-center justify-center font-bold font-mono text-[10px] shrink-0">1</span>
+              <div>
+                <strong class="text-[#1A1A1A]">Erst filtern, dann tippen (Think before prompting):</strong>
+                Geben Sie niemals vertrauliche Messreihen, Firmen-IPs oder reale Mitarbeiterlisten in öffentliche KI-Dienste ein.
+              </div>
+            </div>
+
+            <div class="flex gap-3">
+              <span class="w-5 h-5 border border-[#1A1A1A] bg-white text-[#1A1A1A] flex items-center justify-center font-bold font-mono text-[10px] shrink-0">2</span>
+              <div>
+                <strong class="text-[#1A1A1A]">Verantwortungsvolle Nutzung:</strong>
+                Die Eingabe strukturierter Daten muss stets manuell deklassifiziert sein, bevor Schnittstellen-Experimente starten.
+              </div>
+            </div>
+
+            <div class="flex gap-3">
+              <span class="w-5 h-5 border border-[#1A1A1A] bg-white text-[#1A1A1A] flex items-center justify-center font-bold font-mono text-[10px] shrink-0">3</span>
+              <div>
+                <strong class="text-[#1A1A1A]">Klare funktionale Abgrenzung:</strong>
+                Ein Prototyp dient dem Teambuilding, der Annahmenvalidierung und der strategischen Orientierung – er ist keine Steuerungsinstanz.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. WHY IT MATTERS (BUSINESS VALUE) -->
+    <section class="py-24 bg-[#1A1A1A] text-white px-6">
+      <div class="max-w-5xl mx-auto space-y-16">
+        <div class="text-center space-y-4">
+          <div class="text-[11px] font-mono text-slate-400 uppercase tracking-widest">WIRTSCHAFTLICHER MEHRWERT</div>
+          <h2 class="text-3xl md:text-5xl font-serif italic tracking-tight">
+            Warum sich die methodische Ruhe bezahlt macht
+          </h2>
+          <p class="text-slate-300 max-w-2xl mx-auto text-xs md:text-sm">
+            Durch das strukturierte Ausbremsen am Anfang gewinnen wir bahnbrechende wirtschaftliche Vorteile in der Umsetzung.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="bg-white text-[#1A1A1A] p-8 border-t-4 border-[#D97706] space-y-4">
+            <div class="w-10 h-10 border border-[#1A1A1A] flex items-center justify-center font-serif text-xl italic font-bold">
+              €
+            </div>
+            <h3 class="text-xl font-serif font-bold">Integrierte Kostenersparnis</h3>
+            <p class="text-slate-600 text-xs leading-relaxed">
+              Jede Entwicklungs-Schleife am fertigen Produkt kostet das Zehnfache einer Anpassung am interaktiven Prototyp. Wenn wir die Oberfläche mit Robin vorab klären, eliminieren wir Fehl-Budgetierungen komplett.
+            </p>
+          </div>
+
+          <div class="bg-white text-[#1A1A1A] p-8 border-t-4 border-[#D97706] space-y-4">
+            <div class="w-10 h-10 border border-[#1A1A1A] flex items-center justify-center">
+              <i data-lucide="timer" class="w-5 h-5 text-[#D97706]"></i>
+            </div>
+            <h3 class="text-xl font-serif font-bold">Unschlagbares Tempo</h3>
+            <p class="text-slate-600 text-xs leading-relaxed">
+              Dank der klaren Textspezifikationen bauen unsere KI-Assistenten die ersten Dashboards nicht in drei Monaten, sondern binnen weniger Stunden. Wir testen Hypothesen im Tages- statt Quartalstakt.
+            </p>
+          </div>
+
+          <div class="bg-white text-[#1A1A1A] p-8 border-t-4 border-[#D97706] space-y-4">
+            <div class="w-10 h-10 border border-[#1A1A1A] flex items-center justify-center">
+              <i data-lucide="users" class="w-5 h-5 text-emerald-600"></i>
+            </div>
+            <h3 class="text-xl font-serif font-bold">Echte Team-Akzeptanz</h3>
+            <p class="text-slate-600 text-xs leading-relaxed">
+              Da Robin den Prototyp selbst mitgestrickt hat, verteidigt er das Tool eigenständig vor Kollegen. Die sonst so mühsame Widerstandsphase bei neuer Software fällt komplett weg.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11. CLOSING & FAZIT -->
+    <section class="py-24 bg-white px-6 text-center border-b border-[#E5E2DD]">
+      <div class="max-w-3xl mx-auto space-y-8">
+        <div class="w-12 h-12 border-2 border-[#1A1A1A] flex items-center justify-center mx-auto text-xl font-serif italic font-bold">
+          !
+        </div>
+        <h2 class="text-3xl md:text-5xl font-serif italic text-slate-900 tracking-tight leading-tight">
+          Besseres Denken führt zu besseren Prototypen.
+        </h2>
+        <p class="text-slate-650 text-sm md:text-base leading-relaxed font-serif italic">
+          „Technologie ist herrlich – sofern sie ein verstandenes Problem löst. Gehen wir den Weg gemeinsam. Beginnen wir mit dem Whiteboard, klären wir den logischen Mehrwert und lassen Sie uns dann einen schmerzstillenden Prototyp realisieren, der Ihr Team vom ersten Tag an begeistert.“
+        </p>
+        <div class="pt-6">
+          <a href="#dashboard" class="inline-flex items-center gap-2 px-8 py-4 bg-[#1A1A1A] text-white font-bold tracking-widest text-xs uppercase hover:bg-neutral-800 shadow-md transition-all">
+            <i data-lucide="play" class="w-4 h-4 text-[#D97706]"></i> PROTOTYP-INTERAKTION TESTEN
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-[#F9F8F6] py-16 px-6 border-t-2 border-[#1A1A1A] text-slate-500 text-xs font-medium">
+      <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 font-mono uppercase tracking-wider text-[10px]">
+        <div>
+          &copy; 2026 Methodische Prototypentwicklung. Alle Rechte vorbehalten.
+        </div>
+        <div class="flex flex-wrap gap-x-6 gap-y-2 justify-center">
+          <span>Studiengang: Angewandte Methodik &bull; Juni 2026</span>
+          <span class="text-slate-300">|</span>
+          <span class="text-emerald-700 flex items-center gap-1 font-bold">
+            <span class="w-2 h-2 bg-emerald-600 rounded-full"></span> PROTOTYP LAUFFÄHIG (DUMMY METRIKEN)
+          </span>
+        </div>
+      </div>
+    </footer>
+
+    <!-- INTERACTIVE SIMULATOR SCRIPTS -->
+    <script>
+      // State Variables for the Prototype Simulation
+      let uptime = 92.4;
+      let activeIncidentsCount = 3;
+      let totalDowntime = 38;
+      let isExplanationModeActive = false;
+
+      // Base original dashboard HTML to restore upon reset
+      const initialIncidentsHTML = `
+        <!-- Incident 1 -->
+        <div class="bg-white p-5 border border-[#1A1A1A] space-y-3 relative hover:bg-[#F9F8F6] transition-all" id="incident-1">
+          <div class="flex justify-between items-start">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="font-serif font-bold text-sm text-slate-900">Druckabfall in Rohrabschnitt B3</span>
+                <span class="px-1.5 py-0.5 bg-red-100 text-red-700 text-[9px] font-mono font-bold">Kritisch</span>
+              </div>
+              <div class="text-[10px] text-slate-500 font-mono">Ermitteltes Signal: <span class="text-red-600 font-bold">VALVE_PR_B3_FAIL (14x registriert)</span></div>
+            </div>
+            <span class="text-xs font-mono font-bold text-red-600">-24 Min Downtime</span>
+          </div>
+          <p class="text-xs text-slate-700 leading-relaxed bg-[#F9F8F6] p-3 rounded-none border border-[#E5E2DD]">
+            <strong class="text-[#D97706] font-mono flex items-center gap-1 text-[10px] uppercase mb-1">
+              <i data-lucide="sparkles" class="w-3 h-3"></i> KI-Interpretation für Robin:
+            </strong>
+            Regelmäßiger, abrupter Druckabfall nahe Steuerventil B3 gefolgt von instabilem Durchlauf. Sehr hohes Risiko für Verschleiß der Absperrmembran.
+          </p>
+          <div class="flex justify-between items-center text-[10px] text-slate-500 pt-1 font-mono">
+            <span class="flex items-center gap-1"><i data-lucide="wrench" class="w-3.5 h-3.5"></i> Empfehlung: Dichtung im nächsten Halt tauschen</span>
+            <span class="italic">vor 12 Min.</span>
+          </div>
+        </div>
+
+        <!-- Incident 2 -->
+        <div class="bg-white p-5 border border-[#E5E2DD] space-y-3 relative hover:bg-[#F9F8F6] transition-all" id="incident-2-sign">
+          <div class="flex justify-between items-start">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="font-serif font-bold text-sm text-slate-900">Sensor-Wert-Schwankungen Kessel A2</span>
+                <span class="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-mono font-bold">Achtung</span>
+              </div>
+              <div class="text-[10px] text-slate-500 font-mono">Ermitteltes Signal: <span class="text-amber-700">TMP_SENS_A2_DRIFT (6x registriert)</span></div>
+            </div>
+            <span class="text-xs font-mono font-bold text-[#D97706]">-14 Min Downtime</span>
+          </div>
+          <p class="text-xs text-slate-700 leading-relaxed bg-[#F9F8F6] p-3 rounded-none border border-[#E5E2DD]">
+            <strong class="text-[#D97706] font-mono flex items-center gap-1 text-[10px] uppercase mb-1">
+              <i data-lucide="sparkles" class="w-3 h-3"></i> KI-Interpretation für Robin:
+            </strong>
+            Die Temperatur-Messkette in Kessel A2 schwankt zyklisch im Bereich von ±1.8°C außerhalb der Bandbreite. Wahrscheinlich eine thermische Trägheit durch Belagsbildung an der Messhülse.
+          </p>
+          <div class="flex justify-between items-center text-[10px] text-slate-500 pt-1 font-mono">
+            <span class="flex items-center gap-1"><i data-lucide="info" class="w-3.5 h-3.5"></i> Empfehlung: Kalibrierungsabgleich durchführen</span>
+            <span class="italic">vor 45 Min.</span>
+          </div>
+        </div>
+
+        <!-- Incident 3 -->
+        <div class="bg-white p-5 border border-[#E5E2DD] space-y-3 relative hover:bg-[#F9F8F6] transition-all" id="incident-3">
+          <div class="flex justify-between items-start">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="font-serif font-bold text-sm text-slate-900">Kurzzeitige Blockade Förderband 4</span>
+                <span class="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-mono font-bold">Beobachtung</span>
+              </div>
+              <div class="text-[10px] text-slate-500 font-mono">Ermitteltes Signal: <span class="text-slate-500">MOT_SLIP_F4_NOTICE (2x registriert)</span></div>
+            </div>
+            <span class="text-xs font-mono font-bold text-slate-600">-2 Min Downtime</span>
+          </div>
+          <p class="text-xs text-slate-700 leading-relaxed bg-[#F9F8F6] p-3 rounded-none border border-[#E5E2DD]">
+            <strong class="text-[#D97706] font-mono flex items-center gap-1 text-[10px] uppercase mb-1">
+              <i data-lucide="sparkles" class="w-3 h-3"></i> KI-Interpretation für Robin:
+            </strong>
+            Kurzfristiger Schlupf an der Antriebstrommel des Hauptförderbands B-Mitte. Material ist verstopfungsfrei weitergeglitten. Keine manuelle Korrektur erforderlich.
+          </p>
+          <div class="flex justify-between items-center text-[10px] text-slate-500 pt-1 font-mono">
+            <span class="flex items-center gap-1"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i> Empfehlung: Keine Reparatur nötig, nur beobachten</span>
+            <span class="italic">vor 2 Min.</span>
+          </div>
+        </div>
+      `;
+
+      // Helper function to format timestamp
+      function getCurrentTimeString() {
+        const now = new Date();
+        return now.toTimeString().split(' ')[0];
+      }
+
+      // Initialize Lucide Icons on start
+      document.addEventListener("DOMContentLoaded", function() {
+        lucide.createIcons();
+        
+        // Setup mobile menu
+        const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+        const mobileMenu = document.getElementById("mobileMenu");
+        
+        mobileMenuBtn.addEventListener("click", () => {
+          mobileMenu.classList.toggle("hidden");
+        });
+
+        // Close mobile menu on click of any link
+        const mobileLinks = mobileMenu.querySelectorAll("a");
+        mobileLinks.forEach(link => {
+          link.addEventListener("click", () => {
+            mobileMenu.classList.add("hidden");
+          });
+        });
+
+        // Explanation toggle logic
+        const toggleExplanationBtn = document.getElementById("toggleExplanationBtn");
+        const overlayAlert = document.getElementById("explanationOverlayAlert");
+        const explanationText = document.getElementById("explanationText");
+
+        toggleExplanationBtn.addEventListener("click", () => {
+          isExplanationModeActive = !isExplanationModeActive;
+          const hints = document.querySelectorAll(".explanation-hint");
+          
+          if (isExplanationModeActive) {
+            // Show explanation hints
+            hints.forEach(hint => {
+              hint.classList.remove("hidden");
+              hint.classList.add("block");
+            });
+            overlayAlert.classList.remove("hidden");
+            explanationText.innerText = "Erklärungsmodus ausschalten";
+            toggleExplanationBtn.classList.add("bg-[#D97706]/10", "glowing-border-orange");
+            toggleExplanationBtn.querySelector('i').classList.add("text-[#D97706]");
+          } else {
+            // Hide explanation hints
+            hints.forEach(hint => {
+              hint.classList.remove("block");
+              hint.classList.add("hidden");
+            });
+            overlayAlert.classList.add("hidden");
+            explanationText.innerText = "Erklärungsmodus einschalten";
+            toggleExplanationBtn.classList.remove("bg-[#D97706]/10", "glowing-border-orange");
+            toggleExplanationBtn.querySelector('i').classList.remove("text-[#D97706]");
+          }
+        });
+
+        // Reset simulation logic
+        document.getElementById("resetSimulationBtn").addEventListener("click", () => {
+          uptime = 100 ? 92.4 : 100;
+          activeIncidentsCount = 3;
+          totalDowntime = 38;
+          
+          document.getElementById("kpiUptimeValue").innerText = "92.4 %";
+          document.getElementById("kpiUptimeProgressBar").style.width = "92.4%";
+          document.getElementById("kpiClusterValue").innerText = "3";
+          document.getElementById("kpiDowntimeValue").innerText = "38 Min";
+          document.getElementById("kiRecommendationText").innerText = "Aktuell keine kritischen Druck-Massenverluste. Normalbetrieb beobachten.";
+          
+          // Flash resets on elements
+          document.getElementById("kpiCardUptime").className = "bg-[#F9F8F6] p-6 border border-[#E5E2DD] transition-all duration-500 relative";
+          document.getElementById("kpiCardIncidents").className = "bg-[#F9F8F6] p-6 border border-[#E5E2DD] transition-all duration-500 relative";
+          document.getElementById("kpiCardDowntime").className = "bg-[#F9F8F6] p-6 border border-[#E5E2DD] transition-all duration-500 relative";
+
+          document.getElementById("incidentsContainer").innerHTML = initialIncidentsHTML;
+          
+          const consoleBox = document.getElementById("simulatorLogConsole");
+          consoleBox.innerHTML = `
+            <div class="text-slate-400">[${getCurrentTimeString()}] Simulation zurückgesetzt.</div>
+            <div class="text-slate-500 italic">&gt; Klicken Sie oben auf ein Szenario...</div>
+          `;
+          
+          document.getElementById("simulatorStatus").innerHTML = `
+            <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span> BEREIT
+          `;
+
+          // Restore Pareto chart bars to initial state
+          document.getElementById("paretoBar1").style.width = "54%";
+          document.getElementById("paretoBar2").style.width = "28%";
+          document.getElementById("paretoBar3").style.width = "18%";
+
+          // Retrigger icons loading
+          lucide.createIcons();
+          
+          // Re-verify if explanation is active to match state
+          const hints = document.querySelectorAll(".explanation-hint");
+          hints.forEach(hint => {
+            if (isExplanationModeActive) {
+              hint.classList.remove("hidden");
+              hint.classList.add("block");
+            } else {
+              hint.classList.remove("block");
+              hint.classList.add("hidden");
+            }
+          });
+        });
+      });
+
+      // Simulation engine
+      function simulateIncident(type) {
+        const consoleBox = document.getElementById("simulatorLogConsole");
+        const statusBox = document.getElementById("simulatorStatus");
+        const container = document.getElementById("incidentsContainer");
+        const timeStr = getCurrentTimeString();
+        
+        // Show active loading in console
+        statusBox.innerHTML = `
+          <span class="w-2 h-2 rounded-full bg-amber-600 animate-pulse"></span> SYNTHETISIERE...
+        `;
+        
+        let rawLog = "";
+        let translatedTitle = "";
+        let rawCode = "";
+        let downtimeImpact = 0;
+        let uptimeImpact = 0;
+        let severityTag = "Beobachtung";
+        let severityBg = "bg-slate-100";
+        let severityText = "text-slate-700";
+        let recommendation = "";
+        let translatedInterpretation = "";
+        let recommendationText = "";
+        let newIncidentId = "simulated-" + Date.now();
+
+        if (type === 'valve_leak') {
+          rawCode = "WARN_LEAK_PUMP_C4";
+          rawLog = `[${timeStr}] TELEMETRY: SENSOR_FLOW_C4_LEAK_RATE > 0.08L/s. ERR: PUMP_C4_SEAL_VBE`;
+          translatedTitle = "Leckagegefahr an Säurepumpe C4";
+          downtimeImpact = 18;
+          uptimeImpact = 1.9;
+          severityTag = "Kritisch";
+          severityBg = "bg-red-100";
+          severityText = "text-red-750 font-bold";
+          recommendation = "<i class=\"w-3.5 h-3.5 text-red-600\" data-lucide=\"alert-triangle\"></i> Empfehlung: Dichtung an Pumpe C4 umgehend nachziehen";
+          translatedInterpretation = "Flüssigkeitsverlust an der Pumpenwellendichtung von Kreislauf C-4. Die gemessene Leckage steigt progressiv an. Verzögerte Instandhaltung führt zu Notabschaltung.";
+          recommendationText = "Kritische Säurepumpe C4 meldet Flüssigkeitsaustritt. Robin's Bericht wurde vorgeschrieben. Dichtung anziehen vor Schichtende einplanen.";
+        } else if (type === 'temp_surge') {
+          rawCode = "ERR_TEMP_COOLER_LOW";
+          rawLog = `[${timeStr}] SYS_BUS: TEMP_COOLER_SEC1_DROP_MINUS_12 (CODE_441)`;
+          translatedTitle = "Temperatursturz Kühlsystem 1";
+          downtimeImpact = 11;
+          uptimeImpact = 1.1;
+          severityTag = "Achtung";
+          severityBg = "bg-amber-100 font-bold text-amber-700";
+          severityText = "text-amber-750 font-bold";
+          recommendation = "<i class=\"w-3.5 h-3.5 text-amber-600\" data-lucide=\"help-circle\"></i> Empfehlung: Durchflussmenge im Primärventil drosseln";
+          translatedInterpretation = "Die Temperatur des Primärkühlers ist sprunghaft unter den kritischen Sollwert gesunken. Mögliche Ursache ist ein hängendes Ventil oder ein fehlerhafter Stellungsregler.";
+          recommendationText = "Ausrüstung Kühlsystem 1 weicht ab. Durchfluss im Primärventil drosseln, um die Prozesstemperaturschwelle zu stabilisieren.";
+        } else if (type === 'belt_jam') {
+          rawCode = "MOTOR_VIBRATION_FATAL";
+          rawLog = `[${timeStr}] VIB_SENS: M_M_B2_G_FORCE_1.85g_THRESHOLD_EXCEEDED`;
+          translatedTitle = "Lagerschaden Hauptmischer B2";
+          downtimeImpact = 22;
+          uptimeImpact = 2.4;
+          severityTag = "Kritisch";
+          severityBg = "bg-red-100 text-red-700 font-bold";
+          severityText = "text-red-750 font-bold";
+          recommendation = "<i class=\"w-3.5 h-3.5 text-red-650\" data-lucide=\"wrench\"></i> Empfehlung: Schmierstofffüllstand prüfen oder Lager über Nacht tauschen";
+          translatedInterpretation = "Kritische Lagervibrationen am Antriebsmotor des Hauptmischers B2 detektiert. Die Grenzwerte deuten auf ein verschlissenes Hauptkugellager hin.";
+          recommendationText = "Achtung, extreme mechanische Ausschläge an Hauptmischer B2. Lagertausch über Nacht vorbereiten, sonst droht Totalausfall.";
+        }
+
+        // Print raw incoming telemetry in console
+        consoleBox.innerHTML += `
+          <div class="text-[#D97706] font-bold mt-1">&gt; Signal empfangen!</div>
+          <div class="text-slate-500 text-[10px] break-all leading-tight bg-slate-100 p-1.5 border border-[#E5E2DD] font-mono">${rawLog}</div>
+        `;
+
+        // Simulate AI thinking and building the human translation
+        setTimeout(() => {
+          // Adjust state KPIs
+          uptime = Math.max(81.2, parseFloat((uptime - uptimeImpact).toFixed(1)));
+          activeIncidentsCount += 1;
+          totalDowntime += downtimeImpact;
+
+          // Update KPI Displays
+          const kpiUptimeValEl = document.getElementById("kpiUptimeValue");
+          kpiUptimeValEl.innerText = `${uptime} %`;
+          document.getElementById("kpiUptimeProgressBar").style.width = `${uptime}%`;
+
+          const kpiClusterValEl = document.getElementById("kpiClusterValue");
+          kpiClusterValEl.innerText = activeIncidentsCount;
+
+          const kpiDowntimeValEl = document.getElementById("kpiDowntimeValue");
+          kpiDowntimeValEl.innerText = `${totalDowntime} Min`;
+
+          document.getElementById("kiRecommendationText").innerText = recommendationText;
+
+          // Brief border flash effect on cards
+          const upCard = document.getElementById("kpiCardUptime");
+          const incCard = document.getElementById("kpiCardIncidents");
+          const downCard = document.getElementById("kpiCardDowntime");
+
+          upCard.classList.add("glowing-border-orange");
+          incCard.classList.add("glowing-border-orange");
+          downCard.classList.add("glowing-border-orange");
+
+          setTimeout(() => {
+            upCard.classList.remove("glowing-border-orange");
+            incCard.classList.remove("glowing-border-orange");
+            downCard.classList.remove("glowing-border-orange");
+          }, 1500);
+
+          // Add simulated incident card to the top list
+          const newIncidentHTML = `
+            <div id="${newIncidentId}" class="bg-white p-5 border-2 border-[#D97706] transition-all duration-500 space-y-3 relative hover:bg-[#F9F8F6] animate-slide-in">
+              <!-- Explanatory Tooltip overlay (Inherit visible state) -->
+              <div class="explanation-hint ${isExplanationModeActive ? 'block' : 'hidden'} absolute -top-10 left-4 right-4 bg-[#D97706] text-white text-[11px] font-mono p-2.5 shadow-xl animate-float-hint z-20 font-bold">
+                💡 <strong>Zielgerichtet gelöst:</strong> Der neue Incident-Eintrag übersetzt das Maschinensignal für Robin in Klartext!
+              </div>
+              <div class="flex justify-between items-start">
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2">
+                    <span class="font-serif font-bold text-sm text-slate-900">${translatedTitle}</span>
+                    <span class="px-1.5 py-0.5 ${severityBg} ${severityText} text-[9px] font-mono rounded">${severityTag}</span>
+                  </div>
+                  <div class="text-[10px] text-slate-500 font-mono">Ermitteltes Signal: <span class="font-bold">${rawCode} (Gerade registriert)</span></div>
+                </div>
+                <span class="text-xs font-mono font-bold text-[#D97706]">-${downtimeImpact} Min Downtime</span>
+              </div>
+              <p class="text-xs text-slate-700 leading-relaxed bg-[#F9F8F6] p-3 rounded-none border border-[#E5E2DD]">
+                <strong class="text-[#D97706] font-mono flex items-center gap-1 text-[10px] uppercase mb-1">
+                  <i data-lucide="sparkles" class="w-3 h-3"></i> KI-Interpretation für Robin:
+                </strong>
+                ${translatedInterpretation}
+              </p>
+              <div class="flex justify-between items-center text-[10px] text-slate-500 pt-1 font-mono">
+                <span class="flex items-center gap-1">${recommendation}</span>
+                <span class="italic font-bold text-emerald-600">Gerade eingetroffen</span>
+              </div>
+            </div>
+          `;
+
+          // Prepend to incidents container
+          container.insertAdjacentHTML('afterbegin', newIncidentHTML);
+
+          // Animate borders to standard after brief flash
+          setTimeout(() => {
+            const card = document.getElementById(newIncidentId);
+            if (card) {
+              card.classList.remove("border-[#D97706]");
+              card.classList.add("border-[#1A1A1A]");
+            }
+          }, 2000);
+
+          // Update pareto chart slightly to simulate dynamic analytics
+          if (type === 'valve_leak') {
+            document.getElementById("paretoBar1").style.width = "62%";
+          } else if (type === 'belt_jam') {
+            document.getElementById("paretoBar3").style.width = "27%";
+          }
+
+          // Complete console status
+          statusBox.innerHTML = `
+            <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span> BEREIT
+          `;
+          consoleBox.innerHTML += `
+            <div class="text-emerald-700 font-bold">[${timeStr}] Signal '${rawCode}' erfolgreich übersetzt und gruppiert.</div>
+          `;
+          
+          // Auto-scroll console to bottom
+          consoleBox.scrollTop = consoleBox.scrollHeight;
+
+          // Re-trigger Icons library for newly injected markup
+          lucide.createIcons();
+
+        }, 1200);
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KI-gestützte Prototypentwicklung</title>
+  <style>
+    :root {
+      --black:#050608;
+      --black-soft:#090b0e;
+      --surface:#11151a;
+      --surface-2:#171b21;
+      --white:#f5f5f2;
+      --text:#ececea;
+      --muted:#a7abb2;
+      --faint:#6c7179;
+      --accent:#58a6ff;
+      --border:rgba(255,255,255,.09);
+      --border-strong:rgba(255,255,255,.18);
+      --paper:#f4f3ef;
+      --paper-line:#d9d8d2;
+      --paper-text:#17191c;
+      --yellow:#c9b76a;
+      --red:#c56c78;
+      --green:#78a986;
+      --section:clamp(6.5rem,10vw,10rem);
+      --content:clamp(2.5rem,5vw,4.25rem);
+      --container:1280px;
+    }
+
+    *,*::before,*::after{box-sizing:border-box}
+    *{margin:0;padding:0}
+    html{scroll-behavior:smooth;scroll-padding-top:16px}
+    body{
+      background:var(--black);
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+      font-size:clamp(1rem,1.1vw,1.125rem);
+      line-height:1.7;
+      font-weight:300;
+      overflow-x:hidden;
+    }
+    body.demo-open{overflow:hidden}
+    h1,h2,h3{color:var(--white);font-weight:300;text-wrap:balance}
+    h1{font-size:clamp(3.6rem,7vw,6.5rem);line-height:.98;letter-spacing:-.045em}
+    h2{font-size:clamp(2.45rem,4.7vw,4.4rem);line-height:1.06;letter-spacing:-.035em}
+    h3{font-size:clamp(1.25rem,2.1vw,1.8rem);line-height:1.25;font-weight:400}
+    p{color:var(--muted)}
+    a{color:inherit;text-decoration:none}
+    img{display:block;max-width:100%}
+    button,a{-webkit-tap-highlight-color:transparent}
+    button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+
+    .container{width:min(calc(100% - 64px),var(--container));margin-inline:auto}
+    .copy{max-width:760px}
+    .chapter{padding-block:var(--section);border-top:1px solid var(--border);scroll-margin-top:20px}
+    .chapter-header{display:grid;gap:1.2rem;margin-bottom:var(--content)}
+    .chapter-label,.eyebrow,.micro-label{
+      color:var(--muted);font-size:.72rem;letter-spacing:.13em;text-transform:uppercase;font-weight:600
+    }
+    .chapter-intro{max-width:760px;font-size:clamp(1rem,1.15vw,1.12rem);line-height:1.75}
+
+    .progress-track{position:fixed;inset:0 0 auto 0;height:2px;background:rgba(255,255,255,.035);z-index:1000;pointer-events:none}
+    .progress-bar{height:100%;background:var(--accent);transform:scaleX(0);transform-origin:left center;will-change:transform}
+
+    .hero{
+      min-height:92vh;border-top:0;display:flex;align-items:center;padding-block:clamp(7rem,13vh,10rem);
+      background:radial-gradient(circle at 78% 18%,rgba(88,166,255,.045),transparent 32%),var(--black)
+    }
+    .hero-content{display:grid;gap:2.2rem}
+    .hero h1{max-width:13ch}
+    .hero-text{max-width:700px;font-size:clamp(1rem,1.2vw,1.16rem);line-height:1.75}
+    .hero-actions{display:flex;flex-wrap:wrap;gap:.9rem}
+    .btn{
+      min-height:48px;padding:.78rem 1.35rem;border:1px solid var(--border-strong);border-radius:4px;
+      display:inline-flex;align-items:center;justify-content:center;font:inherit;font-size:.95rem;font-weight:500;cursor:pointer;
+      transition:border-color .18s ease,color .18s ease,background .18s ease
+    }
+    .btn-primary{background:var(--white);color:var(--black);border-color:var(--white)}
+    .btn-primary:hover{background:transparent;color:var(--white)}
+    .btn-secondary{background:transparent;color:var(--white)}
+    .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+    .hero-roadmap{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;color:var(--muted);font-size:.86rem;margin-top:1rem}
+    .hero-roadmap strong{color:var(--white);font-weight:500}.arrow{color:var(--faint)}
+
+    .development-sequence{
+      display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--border);
+      border-block:1px solid var(--border);margin-bottom:var(--content)
+    }
+    .development-stage{background:var(--black-soft);padding:clamp(1.1rem,2vw,1.6rem);display:grid;gap:1rem;min-width:0}
+    .stage-meta{display:flex;justify-content:space-between;align-items:baseline;gap:1rem}
+    .stage-number{color:var(--accent);font-size:.72rem;letter-spacing:.12em;font-weight:600}
+    .stage-title{color:var(--white);font-size:clamp(.95rem,1.2vw,1.08rem);font-weight:400;text-align:right}
+    .stage-preview{aspect-ratio:16/10;border:1px solid var(--border);border-radius:5px;overflow:hidden;background:var(--surface)}
+    .stage-preview img{width:100%;height:100%;object-fit:cover}
+    .stage-preview.whiteboard img{object-position:50% 52%}.stage-preview.claude img{object-position:58% 58%}
+    .press-preview{width:100%;height:100%;background:var(--paper);color:var(--paper-text);padding:clamp(.85rem,2vw,1.35rem);display:flex;flex-direction:column;gap:.55rem}
+    .preview-label{font-size:.52rem;letter-spacing:.13em;text-transform:uppercase;color:#777;border-bottom:1px solid var(--paper-line);padding-bottom:.5rem}
+    .preview-headline{font-size:clamp(.78rem,1.25vw,1.05rem);line-height:1.15;font-weight:500;color:var(--paper-text)}
+    .preview-lines{display:grid;gap:.35rem;margin-top:auto}.preview-line{height:3px;background:#d4d3cd;border-radius:99px}.preview-line:nth-child(2){width:88%}.preview-line:nth-child(3){width:66%}
+    .sequence-result{text-align:center;color:var(--muted);font-size:.92rem;margin-top:1.25rem}
+
+    .editorial-figure{margin-top:1rem}
+    .editorial-figure,.supporting-artifact figure{margin-inline:auto}
+    .figure-whiteboard{width:min(78%,calc(62vh * .75),920px)}
+    .figure-persona{width:min(52%,calc(66vh * .75),620px)}
+    .figure-claude{width:min(68%,calc(62vh * .75),820px)}
+    .editorial-image{display:block;width:100%}
+    .editorial-image img{display:block;width:100%;height:auto;object-fit:cover;border:1px solid var(--border);border-radius:7px;background:var(--surface)}
+    figcaption{width:100%;max-width:none;margin:.8rem 0 0;color:var(--faint);font-size:.84rem;text-align:left}
+    .result-statement,.transition-statement,.privacy-note{
+      max-width:1040px;margin:1.65rem auto 0;padding:1rem 1.2rem;border-left:2px solid var(--accent);
+      background:var(--surface);color:var(--white);font-size:.95rem;line-height:1.65
+    }
+
+    .supporting-artifact{
+      display:grid;grid-template-columns:minmax(0,.8fr) minmax(280px,1.2fr);align-items:center;
+      gap:clamp(2rem,5vw,5rem);margin-top:var(--content);padding-top:var(--content);border-top:1px solid var(--border)
+    }
+    .artifact-copy{display:grid;gap:1rem}.artifact-copy p{font-size:.98rem}
+    .legend{display:flex;flex-wrap:wrap;gap:.75rem 1.25rem;margin-top:.75rem}
+    .legend-item{display:inline-flex;align-items:center;gap:.55rem;color:var(--muted);font-size:.85rem}
+    .legend-dot{width:9px;height:9px;border-radius:2px}.yellow{background:var(--yellow)}.red{background:var(--red)}.green{background:var(--green)}.silver{background:#c7c9cc}
+
+    /* PREFAQ – dark chapter with a light Press Release as visual focus */
+    #prefaq{
+      background:linear-gradient(180deg,var(--black-soft) 0%,var(--surface) 52%,var(--black-soft) 100%);
+      color:var(--text);
+      border-top:1px solid var(--border)
+    }
+    #prefaq h2,#prefaq h3{color:var(--white)}
+    #prefaq .chapter-label{color:var(--muted)}
+    #prefaq .chapter-intro{color:var(--muted)}
+    .prefaq-topline{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.75fr);gap:clamp(2rem,5vw,5rem);align-items:start;margin-bottom:var(--content)}
+    .prefaq-definition-box{
+      background:var(--surface);
+      color:var(--text);
+      border:1px solid var(--border);
+      border-radius:4px;
+      padding:clamp(1.25rem,2.5vw,1.75rem);
+      display:grid;
+      gap:.75rem
+    }
+    #prefaq .prefaq-definition-box h3{color:var(--white)}
+    #prefaq .prefaq-definition-box p{color:var(--muted)}
+    .prefaq-equation{display:grid;grid-template-columns:1fr auto 1fr auto 1.15fr;align-items:stretch;gap:.5rem;margin-top:1.1rem}
+    .equation-part{min-height:70px;border-top:1px solid var(--border);padding-top:.7rem}
+    .equation-part strong{display:block;color:var(--white);font-size:.84rem;letter-spacing:.08em}
+    .equation-part span{color:var(--muted);font-size:.77rem}
+    .equation-symbol{align-self:center;color:var(--faint)}
+    .working-backwards-copy{display:grid;gap:.75rem}
+    #prefaq .working-backwards-copy p{color:var(--muted)}
+    .working-backwards-process{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:var(--content)}
+    .wb-step{min-height:108px;display:grid;place-items:center;text-align:center;padding:1rem;background:var(--surface);color:var(--muted);font-size:.76rem;letter-spacing:.08em;text-transform:uppercase}
+    .wb-step:last-child{color:var(--accent);background:var(--accent-soft)}
+    .press-purpose{max-width:880px;margin-bottom:1.5rem;color:var(--text)!important;font-size:clamp(1.05rem,1.5vw,1.28rem);line-height:1.55}
+    .press-release{max-width:980px;margin-inline:auto;background:#fff;color:var(--paper-text);border:1px solid var(--paper-line);border-radius:4px;box-shadow:0 24px 60px rgba(12,15,20,.11);padding:clamp(2rem,5vw,4.5rem)}
+    .press-release-label{display:block;padding-bottom:1rem;border-bottom:1px solid var(--paper-line);color:#777a7e;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;font-weight:600}
+    .press-release h3{max-width:780px;margin-top:clamp(1.75rem,4vw,3rem);font-size:clamp(2rem,4vw,3.5rem);line-height:1.08;letter-spacing:-.035em;font-weight:400}
+    #prefaq .press-release h3{color:var(--paper-text)}
+    #prefaq .press-release-subheadline{max-width:760px;margin-top:1.3rem;color:#55585d;font-size:clamp(1rem,1.45vw,1.2rem);line-height:1.6}
+    #prefaq .press-release-body{max-width:720px;margin-top:2.3rem;color:#303338;line-height:1.8}
+    .press-release blockquote{max-width:760px;margin-top:2.5rem;padding:1.4rem 0 1.4rem 1.4rem;border-left:2px solid var(--accent);color:var(--paper-text);font-size:clamp(1.05rem,1.6vw,1.3rem);line-height:1.65}
+    .press-release-footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--paper-line);color:#7c7f83;font-size:.8rem}
+    .prefaq-structure-wrap{margin-top:var(--content)}
+    .prefaq-structure{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));margin-top:1.25rem;border-block:1px solid var(--border)}
+    .prefaq-item{padding:1rem;border-right:1px solid var(--border)}.prefaq-item:last-child{border-right:0}
+    .prefaq-item span{display:block;color:var(--faint);font-size:.68rem;letter-spacing:.1em;margin-bottom:.45rem}
+    .prefaq-item strong{color:var(--white);font-size:.9rem;font-weight:500;line-height:1.35}
+    .transition-statement{margin-top:var(--content);max-width:none;background:var(--surface-2);color:var(--white)}
+
+    /* Claude */
+    .prompt-explainer{max-width:900px;margin-bottom:var(--content);font-size:.96rem}
+    .input-claude-team{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--border);border:1px solid var(--border);margin-top:var(--content)}
+    .ict-section{background:var(--surface);padding:clamp(1.35rem,2.5vw,2rem)}
+    .ict-label{color:var(--accent);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600;margin-bottom:1rem}
+    .ict-list{display:grid;gap:.58rem;list-style:none;color:var(--muted);font-size:.9rem;line-height:1.5}.ict-list li::before{content:"—";color:var(--faint);margin-right:.5rem}
+    .iteration-process,.demo-process{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:.75rem;margin-top:1.5rem;padding:1rem;border-block:1px solid var(--border);color:var(--muted);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase}
+    .human-statement{margin-top:1.25rem;text-align:center;color:var(--white);font-size:clamp(1rem,1.35vw,1.15rem)}
+    .privacy-note{margin-top:1.5rem;border-left-color:#c7c9cc;background:rgba(255,255,255,.035);color:var(--muted)}
+
+    /* Demo */
+    .demo-container{display:grid;gap:1rem}.demo-label{color:var(--muted);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600}
+    .demo-wrapper{position:relative;width:min(100%,1500px);margin-inline:auto;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;background:var(--black-soft);box-shadow:0 22px 70px rgba(0,0,0,.42)}
+    .demo-iframe{display:block;width:100%;height:clamp(580px,76vh,820px);border:0;background:var(--black-soft)}
+    .demo-controls{position:absolute;top:.75rem;right:.75rem;z-index:10}
+    .fullscreen-btn{padding:.55rem .8rem;border:1px solid var(--border-strong);border-radius:4px;background:rgba(5,6,8,.78);color:var(--muted);cursor:pointer;font:inherit;font-size:.82rem}.fullscreen-btn:hover{color:var(--white);border-color:#c7c9cc}
+    .demo-hint{color:var(--faint);font-size:.85rem}
+    .demo-outcomes,.principles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin-top:1.5rem;background:var(--border);border:1px solid var(--border)}
+    .outcome,.principle{background:var(--surface);padding:clamp(1.15rem,2.5vw,1.8rem)}.outcome{color:var(--white);text-align:center;font-size:.93rem}
+    .principle-label{color:var(--accent);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600;margin-bottom:.75rem}.principle p{font-size:.92rem;line-height:1.6}
+    .final-statement{max-width:980px;margin:var(--content) auto 0;text-align:center;padding-top:1.4rem;border-top:2px solid var(--accent);color:var(--white);font-size:clamp(1.05rem,1.5vw,1.25rem)}
+    footer{padding:3rem 0;border-top:1px solid var(--border);color:var(--faint);text-align:center;font-size:.82rem}
+
+    .fullscreen-overlay{position:fixed;inset:0;z-index:2000;display:none;grid-template-rows:52px minmax(0,1fr);width:100vw;height:100dvh;background:var(--black)}
+    .fullscreen-overlay.active{display:grid}.fullscreen-header{display:flex;justify-content:flex-end;align-items:center;padding-inline:.75rem;border-bottom:1px solid var(--border);background:rgba(5,6,8,.97)}
+    .fullscreen-iframe{display:block;width:100%;height:100%;min-height:0;border:0;background:var(--black)}
+
+    @media(max-width:1024px){
+      .supporting-artifact,.prefaq-topline{grid-template-columns:1fr}
+      .figure-whiteboard{width:min(88%,calc(56vh * .75),820px)}.figure-persona{width:min(68%,calc(62vh * .75),580px)}.figure-claude{width:min(82%,calc(58vh * .75),760px)}
+      .input-claude-team{grid-template-columns:1fr}
+    }
+    @media(max-width:768px){
+      .container{width:min(calc(100% - 32px),var(--container))}.chapter{padding-block:clamp(5.5rem,16vw,8rem)}.hero{min-height:auto;padding-top:7rem;padding-bottom:6rem}
+      .development-sequence{grid-template-columns:1fr}.development-stage{grid-template-columns:100px 1fr;align-items:center}.stage-meta{display:grid;align-content:center}.stage-title{text-align:left}.stage-preview{grid-column:2;grid-row:1}
+      .prefaq-equation,.working-backwards-process,.prefaq-structure{grid-template-columns:1fr}.equation-symbol{display:none}.prefaq-item{border-right:0;border-bottom:1px solid var(--border)}.prefaq-item:last-child{border-bottom:0}
+      .demo-outcomes,.principles{grid-template-columns:1fr}.demo-iframe{height:62vh;min-height:500px}
+    }
+    @media(max-width:560px){
+      .hero-actions{flex-direction:column}.btn{width:100%}.figure-whiteboard,.figure-persona,.figure-claude{width:100%}
+      .development-stage{grid-template-columns:82px 1fr;padding:.9rem}.press-release{padding:1.5rem}.iteration-process,.demo-process{justify-content:flex-start}.demo-iframe{height:58vh;min-height:430px}
+    }
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
+  </style>
+</head>
+<body>
+  <div class="progress-track" aria-hidden="true"><div class="progress-bar" id="progress-bar"></div></div>
+
+  <main>
+    <header id="idea" class="chapter hero">
+      <div class="container">
+        <div class="hero-content">
+          <div class="copy">
+            <div class="eyebrow">KI-gestützte Prototypentwicklung</div>
+            <h1>Was KI leisten kann, wenn man sie richtig führt.</h1>
+          </div>
+          <p class="hero-text">Der interaktive Prototyp entstand nicht aus einem einzelnen Prompt, sondern aus Problemverständnis, einem beschriebenen Zielbild und mehreren geprüften Iterationen.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#verstehen">Entwicklungsweg ansehen</a>
+            <a class="btn btn-secondary" href="#demo">Direkt zur Demo</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section id="verstehen" class="chapter">
+      <div class="container">
+        <div class="development-sequence" aria-label="Drei Entwicklungsstufen">
+          <article class="development-stage">
+            <div class="stage-meta"><span class="stage-number">01 / WHITEBOARD</span><span class="stage-title">Problemraum verstehen</span></div>
+            <div class="stage-preview whiteboard"><img src="public/Whiteboard.jpg" alt="Workshopraum mit Whiteboard und Persona-Board"></div>
+          </article>
+          <article class="development-stage">
+            <div class="stage-meta"><span class="stage-number">02 / PRESS RELEASE</span><span class="stage-title">Zielbild beschreiben</span></div>
+            <div class="stage-preview" aria-label="Vorschau der fiktiven Pressemitteilung"><div class="press-preview"><span class="preview-label">Pressemitteilung</span><div class="preview-headline">Komplexe Qualitätsfälle früher verständlich machen.</div><div class="preview-lines" aria-hidden="true"><div class="preview-line"></div><div class="preview-line"></div><div class="preview-line"></div></div></div></div>
+          </article>
+          <article class="development-stage">
+            <div class="stage-meta"><span class="stage-number">03 / CLAUDE</span><span class="stage-title">Zielbild umsetzen</span></div>
+            <div class="stage-preview claude"><img src="public/Claude.jpg" alt="Arbeit am Laptop mit Code und Workshopmaterialien"></div>
+          </article>
+        </div>
+
+        <div class="chapter-header">
+          <div class="chapter-label">01 / Problemraum</div>
+          <h2>Bevor eine Oberfläche entstand, wurde der Problemraum sichtbar.</h2>
+          <p class="chapter-intro">Aufgaben, Informationswege, Hindernisse und offene Fragen wurden gemeinsam gesammelt und geordnet.</p>
+        </div>
+        <figure class="editorial-figure figure-whiteboard">
+          <div class="editorial-image whiteboard"><img src="public/Whiteboard.jpg" alt="Workshop-Whiteboard mit Post-its und Skizzen zur Strukturierung des Problemraums"></div>
+          <figcaption>Workshop zur Strukturierung des Problemraums</figcaption>
+        </figure>
+        <div class="result-statement">Wir blieben bewusst länger im Problemraum, statt direkt eine Oberfläche zu entwerfen.</div>
+
+        <div class="supporting-artifact">
+          <div class="artifact-copy">
+            <div class="micro-label">Unterstützendes Artefakt</div>
+            <h3>Die Persona übersetzte Beobachtungen in einen konkreten Nutzungskontext.</h3>
+            <p>Sie half dabei, abstrakte Anforderungen aus der Perspektive eines konkreten Nutzers zu betrachten.</p>
+            <div class="legend" aria-label="Farblogik des Persona-Boards">
+              <span class="legend-item"><span class="legend-dot yellow"></span>Aufgaben</span><span class="legend-item"><span class="legend-dot red"></span>Hindernisse</span><span class="legend-item"><span class="legend-dot green"></span>Ziele</span><span class="legend-item"><span class="legend-dot silver"></span>Persona</span>
+            </div>
+          </div>
+          <figure class="figure-persona"><div class="editorial-image persona"><img src="public/Persona_Robin.jpg" alt="Persona-Board mit Aufgaben, Hindernissen und Zielen"></div><figcaption>Persona-Board als strukturierter Kontext für Anforderungen</figcaption></figure>
+        </div>
+      </div>
+    </section>
+
+    <section id="prefaq" class="chapter">
+      <div class="container">
+        <div class="chapter-header">
+          <div class="chapter-label">02 / PREFAQ</div>
+          <h2>Das gewünschte Ergebnis wurde beschrieben, bevor es gebaut wurde.</h2>
+          <p class="chapter-intro">Mit PREFAQ formulierten wir zuerst, welches Problem gelöst werden soll, welchen Nutzen die Lösung bietet und wie sich das zukünftige Nutzererlebnis anfühlen soll.</p>
+        </div>
+
+        <div class="prefaq-topline">
+          <div class="prefaq-definition-box">
+            <h3>Was ist PREFAQ?</h3>
+            <p>PREFAQ verbindet eine fiktive Pressemitteilung mit wichtigen Fragen und Antworten. So werden Problem, Nutzen, Funktionen, Grenzen und offene Annahmen vor der Umsetzung geklärt.</p>
+            <div class="prefaq-equation" aria-label="PREFAQ setzt sich aus Press Release und FAQ zusammen">
+              <div class="equation-part"><strong>PR</strong><span>Press Release</span></div><div class="equation-symbol">+</div><div class="equation-part"><strong>FAQ</strong><span>Fragen und Antworten</span></div><div class="equation-symbol">=</div><div class="equation-part"><strong>PREFAQ</strong><span>gemeinsames Zielbild</span></div>
+            </div>
+          </div>
+          <div class="working-backwards-copy">
+            <h3>Working Backwards</h3>
+            <p>Working Backwards bedeutet: Wir beginnen beim gewünschten Nutzererlebnis und arbeiten von dort rückwärts zu Anforderungen und Funktionen.</p>
+            <p>So startet das Team nicht mit Technik oder einzelnen Features, sondern mit dem Nutzen für die spätere Anwendung.</p>
+          </div>
+        </div>
+
+        <div class="working-backwards-process" aria-label="Working-Backwards-Prozess"><div class="wb-step">Gewünschtes Nutzererlebnis</div><div class="wb-step">Nutzen</div><div class="wb-step">Anforderungen</div><div class="wb-step">Funktionen</div><div class="wb-step">Prototyp</div></div>
+
+        <p class="press-purpose">Die fiktive Pressemitteilung zwingt das Team dazu, den späteren Nutzen aus Sicht der Anwender zu beschreiben – bevor über Funktionen und technische Umsetzung entschieden wird.</p>
+
+        <article class="press-release" aria-labelledby="press-title">
+          <span class="press-release-label">Pressemitteilung · Fiktives Zielbild</span>
+          <h3 id="press-title">Neue digitale Arbeitsoberfläche macht komplexe Qualitätsfälle früher verständlich.</h3>
+          <p class="press-release-subheadline">Ein interaktiver Konzeptprototyp bündelt relevante Informationen, macht offene Schritte sichtbar und schafft eine gemeinsame Grundlage für Entscheidungen.</p>
+          <p class="press-release-body">Die Oberfläche zeigt, wie ein zukünftiger Arbeitsablauf aussehen könnte. Informationen werden strukturiert, Zusammenhänge verständlich dargestellt und nächste Schritte nachvollziehbar gemacht.</p>
+          <blockquote>„Wir diskutieren nicht mehr nur über eine abstrakte Idee. Wir können den geplanten Ablauf sehen, ausprobieren und gemeinsam verbessern.“</blockquote>
+          <div class="press-release-footer">Fiktives Zukunftsszenario – keine bereits gemessenen Ergebnisse</div>
+        </article>
+
+        <div class="prefaq-structure-wrap">
+          <div class="micro-label">Aufbau des PREFAQ</div>
+          <div class="prefaq-structure"><div class="prefaq-item"><span>01</span><strong>Nutzer und Problem</strong></div><div class="prefaq-item"><span>02</span><strong>Gewünschtes Ergebnis</strong></div><div class="prefaq-item"><span>03</span><strong>Nutzen</strong></div><div class="prefaq-item"><span>04</span><strong>Kernfunktionen</strong></div><div class="prefaq-item"><span>05</span><strong>Grenzen und offene Fragen</strong></div></div>
+        </div>
+        <div class="transition-statement">Das PREFAQ wurde zum Arbeitsrahmen für Claude: Die KI erhielt nicht nur einen Gestaltungsauftrag, sondern ein beschriebenes Problem, ein Zielbild und klare Grenzen.</div>
+      </div>
+    </section>
+
+    <section id="ki" class="chapter">
+      <div class="container">
+        <div class="chapter-header">
+          <div class="chapter-label">03 / Claude</div>
+          <h2>Claude bekam keinen leeren Prompt, sondern einen vorbereiteten Arbeitsrahmen.</h2>
+          <p class="chapter-intro">Das Team übergab Claude den strukturierten Kontext und entwickelte den Prototyp anschließend in mehreren geprüften und korrigierten Iterationen.</p>
+        </div>
+        <p class="prompt-explainer">Ein Prompt ist der Arbeitsauftrag an die KI. Je klarer Problem, Kontext und gewünschtes Ergebnis beschrieben sind, desto gezielter kann Claude unterstützen.</p>
+        <figure class="editorial-figure figure-claude"><div class="editorial-image claude"><img src="public/Claude.jpg" alt="Laptop mit Code und Workshopmaterialien während der Umsetzung mit Claude"></div><figcaption>Überführung des strukturierten Kontexts in einen interaktiven Prototyp</figcaption></figure>
+
+        <div class="input-claude-team">
+          <article class="ict-section"><div class="ict-label">Input</div><ul class="ict-list"><li>Workshop-Ergebnisse</li><li>Nutzeranforderungen</li><li>PREFAQ und Press Release</li><li>visuelle Richtung</li><li>technische Vorgaben</li></ul></article>
+          <article class="ict-section"><div class="ict-label">Claude</div><ul class="ict-list"><li>Inhalte strukturieren</li><li>Seitenaufbau entwickeln</li><li>HTML und Interaktionen erzeugen</li><li>Feedback einarbeiten</li></ul></article>
+          <article class="ict-section"><div class="ict-label">Team</div><ul class="ict-list"><li>fachlich prüfen</li><li>erfundene Inhalte entfernen</li><li>Fehler korrigieren</li><li>Varianten auswählen</li><li>Ergebnis testen</li></ul></article>
+        </div>
+        <div class="iteration-process" aria-label="Iterativer Arbeitsprozess"><span>Kontext</span><span class="arrow">→</span><span>Entwurf</span><span class="arrow">→</span><span>Prüfung</span><span class="arrow">→</span><span>Korrektur</span><span class="arrow">→</span><span>Neuer Entwurf</span></div>
+        <p class="human-statement">Claude erzeugte Vorschläge. Auswahl, Korrektur und Verantwortung blieben beim Team.</p>
+        <div class="privacy-note">Für den Prototyp wurden interne Inhalte abstrahiert und anschließend durch Dummy-Daten ersetzt. Vor jedem KI-Einsatz muss geklärt werden, welche Informationen verarbeitet werden dürfen.</div>
+      </div>
+    </section>
+
+    <section id="demo" class="chapter">
+      <div class="container">
+        <div class="chapter-header"><div class="chapter-label">04 / Demo</div><h2>Aus strukturiertem Kontext wurde ein interaktiver Prototyp.</h2><p class="chapter-intro">Die Demo zeigt kein fertiges Serienprodukt. Sie macht die Kernidee früh sichtbar, bedienbar und diskutierbar.</p></div>
+        <div class="demo-process" aria-label="Weg zum Prototyp"><span>Workshop</span><span class="arrow">→</span><span>PREFAQ</span><span class="arrow">→</span><span>Claude</span><span class="arrow">→</span><span>Prototyp</span></div>
+        <div class="demo-container">
+          <div class="demo-wrapper"><div class="demo-controls"><button type="button" class="fullscreen-btn" id="fullscreen-open">Vollbild</button></div><iframe class="demo-iframe" id="demo-iframe" src="public/mo360-demo.html" title="Interaktiver MO360-Konzeptprototyp"></iframe></div>
+          <p class="demo-hint">Rolle auswählen, Dashboard öffnen und die interaktiven Ansichten sowie den KI-Chat ausprobieren.</p>
+        </div>
+        <div class="demo-outcomes"><div class="outcome">Ideen werden sichtbar</div><div class="outcome">Annahmen werden testbar</div><div class="outcome">Fachliches Feedback wird früher möglich</div></div>
+      </div>
+    </section>
+
+    <section id="learnings" class="chapter">
+      <div class="container">
+        <div class="chapter-header"><div class="chapter-label">05 / Learnings</div><h2>Schnelligkeit ersetzt keine Verantwortung.</h2><p class="chapter-intro">KI kann Entwicklung beschleunigen. Fachliche Prüfung, Datenschutz und echtes Nutzerfeedback bleiben dennoch notwendig.</p></div>
+        <div class="principles"><article class="principle"><div class="principle-label">Kontext</div><p>Gute Ergebnisse benötigen ein verstandenes Problem und klare Anforderungen.</p></article><article class="principle"><div class="principle-label">Prüfung</div><p>KI kann plausible, aber falsche Inhalte erzeugen. Aussagen und Code müssen geprüft werden.</p></article><article class="principle"><div class="principle-label">Validierung</div><p>Ein überzeugender Prototyp ist noch kein fertiges Produkt. Der Ablauf muss mit Nutzern getestet werden.</p></article></div>
+        <p class="final-statement">Das Potenzial von KI liegt nicht im Überspringen des Prozesses. Es liegt darin, einen guten Prozess schneller sichtbar und testbar zu machen.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer><div class="container">KI-gestützte Prototypentwicklung · Problem verstehen, Zielbild beschreiben, mit Claude umsetzen und gemeinsam prüfen.</div></footer>
+
+  <div class="fullscreen-overlay" id="fullscreen-overlay" role="dialog" aria-modal="true" aria-label="Prototyp im Vollbild" aria-hidden="true">
+    <div class="fullscreen-header"><button type="button" class="fullscreen-btn" id="fullscreen-close">Vollbild verlassen</button></div>
+    <iframe class="fullscreen-iframe" id="fullscreen-iframe" title="Interaktiver Prototyp im Vollbild"></iframe>
+  </div>
+
+  <script>
+    (()=>{
+      const bar=document.getElementById('progress-bar');
+      const overlay=document.getElementById('fullscreen-overlay');
+      const openBtn=document.getElementById('fullscreen-open');
+      const closeBtn=document.getElementById('fullscreen-close');
+      const demo=document.getElementById('demo-iframe');
+      const full=document.getElementById('fullscreen-iframe');
+      let lastFocus=null,ticking=false;
+
+      const updateProgress=()=>{
+        const root=document.documentElement;
+        const max=Math.max(root.scrollHeight-window.innerHeight,1);
+        const value=Math.min(Math.max(window.scrollY/max,0),1);
+        bar.style.transform=`scaleX(${value})`;
+        ticking=false;
+      };
+      const requestUpdate=()=>{if(!ticking){ticking=true;requestAnimationFrame(updateProgress)}};
+      const openFullscreen=()=>{lastFocus=document.activeElement;full.src=demo.src;overlay.classList.add('active');overlay.setAttribute('aria-hidden','false');document.body.classList.add('demo-open');closeBtn.focus()};
+      const closeFullscreen=()=>{overlay.classList.remove('active');overlay.setAttribute('aria-hidden','true');document.body.classList.remove('demo-open');full.src='';if(lastFocus)lastFocus.focus()};
+
+      openBtn.addEventListener('click',openFullscreen);
+      closeBtn.addEventListener('click',closeFullscreen);
+      document.addEventListener('keydown',e=>{if(e.key==='Escape'&&overlay.classList.contains('active'))closeFullscreen()});
+      window.addEventListener('scroll',requestUpdate,{passive:true});
+      window.addEventListener('resize',requestUpdate);
+      updateProgress();
+    })();
+  </script>
+</body>
+</html>
